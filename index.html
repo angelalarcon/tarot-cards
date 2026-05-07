@@ -75,21 +75,37 @@
       </section>
 
       <section id="step3" class="fixed inset-0 z-40 hidden bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)]">
-        <div class="group absolute right-4 top-4 z-20 inline-block">
+        <div class="absolute right-4 top-4 z-20 flex items-center gap-2">
           <button
+            id="resetSessionBtn"
             type="button"
-            class="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200/60 bg-slate-900/90 text-[11px] font-bold text-violet-100 shadow-lg backdrop-blur transition hover:bg-slate-900"
-            aria-label="Informacion"
-            aria-describedby="deckHelpTooltip"
+            class="rounded-full border border-rose-300/50 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-rose-100 shadow-lg backdrop-blur transition hover:bg-slate-900"
           >
-            i
+            Nueva sesion
           </button>
-          <div
-            id="deckHelpTooltip"
-            role="tooltip"
-            class="pointer-events-none invisible absolute right-0 top-full z-[60] mt-2 w-max max-w-[min(280px,calc(100vw-5rem))] bg-slate-900 px-3 py-2 text-left text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl ring-1 ring-violet-300/35 transition-opacity duration-200 group-hover:pointer-events-none group-hover:visible group-hover:opacity-100"
+          <button
+            id="shareLinkBtn"
+            type="button"
+            class="rounded-full border border-violet-200/60 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-violet-100 shadow-lg backdrop-blur transition hover:bg-slate-900"
           >
-            Haz click en el mazo para otra tirada. En aleatorio pedirá la cantidad; en manual marcarás en la cuadrícula cuáles salieron.
+            Copiar URL
+          </button>
+          <div class="group inline-block">
+            <button
+              type="button"
+              class="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200/60 bg-slate-900/90 text-[11px] font-bold text-violet-100 shadow-lg backdrop-blur transition hover:bg-slate-900"
+              aria-label="Informacion"
+              aria-describedby="deckHelpTooltip"
+            >
+              i
+            </button>
+            <div
+              id="deckHelpTooltip"
+              role="tooltip"
+              class="pointer-events-none invisible absolute right-0 top-full z-[60] mt-2 w-max max-w-[min(280px,calc(100vw-5rem))] bg-slate-900 px-3 py-2 text-left text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl ring-1 ring-violet-300/35 transition-opacity duration-200 group-hover:pointer-events-none group-hover:visible group-hover:opacity-100"
+            >
+              Haz click en el mazo para otra tirada. En aleatorio pedirá la cantidad; en manual marcarás en la cuadrícula cuáles salieron. Comparte el enlace para que alguien vea las mismas cartas.
+            </div>
           </div>
         </div>
 
@@ -257,6 +273,11 @@
       const manualPickCancelBtn = document.getElementById("manualPickCancelBtn");
       const manualPickConfirmBtn = document.getElementById("manualPickConfirmBtn");
       const randomDrawCountBlock = document.getElementById("randomDrawCountBlock");
+      const shareLinkBtn = document.getElementById("shareLinkBtn");
+      const resetSessionBtn = document.getElementById("resetSessionBtn");
+
+      const SESSION_URL_PARAM = "r";
+      const SESSION_STORAGE_KEY = "tarot:lastRounds";
 
       function buildCard(id, name, imageFile) {
         return { id, name, img: `${IMAGE_BASE_URL}/${imageFile}` };
@@ -763,8 +784,9 @@
         return [...manualSelected].map((id) => remainingDeck.find((card) => card.id === id)).filter(Boolean);
       }
 
-      async function animateReveal(cards, roundIndex) {
-        animating = true;
+      async function animateReveal(cards, roundIndex, opts) {
+        const instant = Boolean(opts && opts.instant);
+        if (!instant) animating = true;
         await ensureTarotMeaningsLoaded();
         renderDeckPile();
 
@@ -806,13 +828,21 @@
           wrap.style.marginLeft = colIndex === 0 ? "0" : `-${overlapPx}px`;
           wrap.style.marginTop = rowIndex === 0 ? "0" : `${L.rowMarginTop}px`;
           wrap.style.zIndex = String(500 + stackPos);
-          wrap.style.opacity = "0";
-          wrap.style.transform = `translate(${L.dealX}px, ${L.dealY}px) rotate(0deg)`;
-          wrap.style.transition = "transform 720ms cubic-bezier(0.2, 0.95, 0.25, 1), opacity 550ms ease-out";
+          if (instant) {
+            wrap.style.opacity = "1";
+            wrap.style.transform = finalTransform;
+          } else {
+            wrap.style.opacity = "0";
+            wrap.style.transform = `translate(${L.dealX}px, ${L.dealY}px) rotate(0deg)`;
+            wrap.style.transition = "transform 720ms cubic-bezier(0.2, 0.95, 0.25, 1), opacity 550ms ease-out";
+          }
 
           const innerFlip = document.createElement("div");
           innerFlip.className =
             "relative aspect-[350/600] w-full origin-center [transform-style:preserve-3d] transition-transform duration-[680ms] ease-out";
+          if (instant) {
+            innerFlip.classList.add("[transform:rotateY(180deg)]");
+          }
           innerFlip.innerHTML = `
             <div class="absolute inset-0 box-border overflow-hidden rounded-none border-2 border-violet-200/95 bg-neutral-950 [backface-visibility:hidden]">
               <img src="${TAROT_CARD_BACK_SRC}" alt="" class="block h-full w-full object-cover object-center" decoding="async" loading="lazy" />
@@ -825,15 +855,19 @@
           attachCardTooltipBehavior(wrap, card);
           mahjongStrip.appendChild(wrap);
 
-          const dealDelay = 320 * index;
-          window.setTimeout(() => {
-            wrap.style.opacity = "1";
-            wrap.style.transform = finalTransform;
-          }, dealDelay);
-          window.setTimeout(() => {
-            innerFlip.classList.add("[transform:rotateY(180deg)]");
-          }, dealDelay + 420);
+          if (!instant) {
+            const dealDelay = 320 * index;
+            window.setTimeout(() => {
+              wrap.style.opacity = "1";
+              wrap.style.transform = finalTransform;
+            }, dealDelay);
+            window.setTimeout(() => {
+              innerFlip.classList.add("[transform:rotateY(180deg)]");
+            }, dealDelay + 420);
+          }
         });
+
+        if (instant) return;
 
         const totalMs = Math.max(cards.length * 320 + 750, (cards.length - 1) * 320 + 1100);
         await new Promise((resolve) => window.setTimeout(resolve, totalMs));
@@ -864,7 +898,150 @@
         manualSelected.clear();
         updateRemainingText();
         setStep(3);
+        persistSession();
         await animateReveal(selected, roundIndex);
+      }
+
+      function encodeRevealedRounds(rounds) {
+        return rounds
+          .map((round) => round.map((card) => card.id).join(""))
+          .filter((s) => s.length > 0)
+          .join(".");
+      }
+
+      function decodeRevealedRounds(encoded, deck) {
+        if (!encoded) return [];
+        const byId = new Map(deck.map((card) => [card.id, card]));
+        const seen = new Set();
+        const rounds = [];
+        for (const group of String(encoded).split(".")) {
+          const cards = [];
+          for (let i = 0; i + 3 <= group.length; i += 3) {
+            const id = group.slice(i, i + 3);
+            const card = byId.get(id);
+            if (card && !seen.has(id)) {
+              seen.add(id);
+              cards.push(card);
+            }
+          }
+          if (cards.length > 0) rounds.push(cards);
+        }
+        return rounds;
+      }
+
+      function persistSession() {
+        const encoded = encodeRevealedRounds(revealedRounds);
+        try {
+          const url = new URL(window.location.href);
+          if (encoded) {
+            url.searchParams.set(SESSION_URL_PARAM, encoded);
+          } else {
+            url.searchParams.delete(SESSION_URL_PARAM);
+          }
+          window.history.replaceState(null, "", url.toString());
+        } catch (_) {}
+        try {
+          if (encoded) {
+            window.localStorage.setItem(SESSION_STORAGE_KEY, encoded);
+          } else {
+            window.localStorage.removeItem(SESSION_STORAGE_KEY);
+          }
+        } catch (_) {}
+      }
+
+      function readSessionFromUrlOrStorage() {
+        let encoded = "";
+        try {
+          encoded = new URL(window.location.href).searchParams.get(SESSION_URL_PARAM) || "";
+        } catch (_) {
+          encoded = "";
+        }
+        if (!encoded) {
+          try {
+            encoded = window.localStorage.getItem(SESSION_STORAGE_KEY) || "";
+          } catch (_) {
+            encoded = "";
+          }
+        }
+        return encoded;
+      }
+
+      async function restoreSessionIfAny() {
+        const encoded = readSessionFromUrlOrStorage();
+        if (!encoded) return false;
+        const rounds = decodeRevealedRounds(encoded, fullDeck);
+        if (rounds.length === 0) return false;
+
+        revealedRounds = rounds;
+        const usedIds = new Set();
+        for (const round of rounds) for (const c of round) usedIds.add(c.id);
+        remainingDeck = fullDeck.filter((c) => !usedIds.has(c.id));
+        currentMode = currentMode || "random";
+        updateRemainingText();
+        setStep(3);
+        await ensureTarotMeaningsLoaded();
+        for (let i = 0; i < rounds.length; i += 1) {
+          await animateReveal(rounds[i], i, { instant: true });
+        }
+        renderDeckPile();
+        persistSession();
+        return true;
+      }
+
+      function resetSession() {
+        revealedRounds = [];
+        remainingDeck = [...fullDeck];
+        manualSelected.clear();
+        manualDeckPickSelections = new Set();
+        mahjongCardCount = 0;
+        if (mahjongStrip) {
+          mahjongStrip.innerHTML = "";
+        }
+        animating = false;
+        modalOpenRequested = false;
+        try {
+          window.localStorage.removeItem(SESSION_STORAGE_KEY);
+        } catch (_) {}
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete(SESSION_URL_PARAM);
+          window.history.replaceState(null, "", url.toString());
+        } catch (_) {}
+        updateRemainingText();
+        renderDeckPile();
+        setStep(1);
+      }
+
+      async function copyShareLinkToClipboard() {
+        const url = window.location.href;
+        let copied = false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            copied = true;
+          }
+        } catch (_) {}
+        if (!copied) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = url;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            copied = document.execCommand("copy");
+            document.body.removeChild(ta);
+          } catch (_) {}
+        }
+        if (shareLinkBtn) {
+          const original = shareLinkBtn.textContent;
+          shareLinkBtn.textContent = copied ? "Copiado!" : "No se pudo copiar";
+          shareLinkBtn.disabled = true;
+          window.setTimeout(() => {
+            shareLinkBtn.textContent = original;
+            shareLinkBtn.disabled = false;
+          }, 1500);
+        }
       }
 
       function openRandomDrawCountModal() {
@@ -912,6 +1089,17 @@
       goManualBtn.addEventListener("click", () => enterStep2("manual"));
       backToModeBtn.addEventListener("click", () => setStep(1));
       toAnimationBtn.addEventListener("click", startAnimationStep);
+      shareLinkBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void copyShareLinkToClipboard();
+      });
+      resetSessionBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (revealedRounds.length > 0) {
+          if (!window.confirm("¿Empezar una nueva sesion? Se perderan las cartas actuales.")) return;
+        }
+        resetSession();
+      });
       deckPile.addEventListener("click", (event) => {
         event.stopPropagation();
         openDeckDrawPrompt();
@@ -992,6 +1180,12 @@
       updateRemainingText();
       setStep(1);
       renderDeckPile();
+
+      void (async () => {
+        try {
+          await restoreSessionIfAny();
+        } catch (_) {}
+      })();
     </script>
   </body>
 </html>
