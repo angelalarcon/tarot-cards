@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tarot - Flujo por Pantallas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)] text-slate-100">
+    <main class="mx-auto max-w-6xl px-4 py-8 md:py-10">
+      <section id="step1" class="mx-auto max-w-xl rounded-2xl border border-violet-400/35 bg-slate-900/70 p-6 shadow-2xl backdrop-blur md:p-8">
+        <h1 class="text-center text-3xl font-bold tracking-tight">Tarot</h1>
+        <div class="mt-8 grid gap-4 md:grid-cols-2">
+          <button id="goRandomBtn" class="rounded-xl bg-violet-600 px-4 py-4 text-lg font-semibold transition hover:bg-violet-500">
+            No tengo cartas
+          </button>
+          <button id="goManualBtn" class="rounded-xl bg-amber-500 px-4 py-4 text-lg font-semibold text-slate-900 transition hover:bg-amber-400">
+            Si tengo
+          </button>
+        </div>
+      </section>
+
+      <section id="step2" class="hidden mx-auto max-w-4xl rounded-2xl border border-violet-400/35 bg-slate-900/70 p-6 shadow-2xl backdrop-blur md:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="step2Title" class="text-2xl font-bold">Paso 2</h2>
+          <p id="remainingText" class="rounded-lg border border-slate-600 bg-slate-800/70 px-3 py-1 text-sm">
+            Cartas restantes: 78
+          </p>
+        </div>
+
+        <div id="randomDrawCountBlock" class="mt-6 rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+          <label for="drawCountInput" class="text-sm text-slate-300">Cuantas cartas quieres sacar</label>
+          <input
+            id="drawCountInput"
+            type="number"
+            min="1"
+            max="78"
+            value="3"
+            class="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950/70 px-3 py-2 outline-none ring-violet-500 transition focus:ring"
+          />
+        </div>
+
+        <div id="manualConfig" class="mt-5 hidden rounded-xl border border-amber-300/35 bg-amber-950/20 p-4">
+          <p id="manualHelper" class="text-sm text-amber-100/90">Selecciona cartas del listado.</p>
+          <input
+            id="manualSearchInput"
+            type="text"
+            placeholder="Buscar carta..."
+            class="mt-3 w-full rounded-lg border border-amber-300/35 bg-slate-950/70 px-3 py-2 outline-none ring-amber-400 transition focus:ring"
+          />
+          <div
+            id="manualCardList"
+            class="mt-3 grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:max-h-96 sm:grid-cols-4 lg:grid-cols-5"
+          ></div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button id="backToModeBtn" class="rounded-lg border border-slate-500 px-4 py-2 transition hover:bg-slate-800">
+            Volver
+          </button>
+          <button id="toAnimationBtn" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold transition hover:bg-emerald-500">
+            Ir a animacion
+          </button>
+        </div>
+      </section>
+
+      <section id="step3" class="fixed inset-0 z-40 hidden bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)]">
+        <div class="group absolute right-4 top-4 z-20 inline-block">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200/60 bg-slate-900/90 text-[11px] font-bold text-violet-100 shadow-lg backdrop-blur transition hover:bg-slate-900"
+            aria-label="Informacion"
+            aria-describedby="deckHelpTooltip"
+          >
+            i
+          </button>
+          <div
+            id="deckHelpTooltip"
+            role="tooltip"
+            class="pointer-events-none invisible absolute right-0 top-full z-[60] mt-2 w-max max-w-[min(280px,calc(100vw-5rem))] bg-slate-900 px-3 py-2 text-left text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl ring-1 ring-violet-300/35 transition-opacity duration-200 group-hover:pointer-events-none group-hover:visible group-hover:opacity-100"
+          >
+            Haz click en el mazo para otra tirada. En aleatorio pedirá la cantidad; en manual marcarás en la cuadrícula cuáles salieron.
+          </div>
+        </div>
+
+        <div id="animationStage" class="relative h-screen overflow-auto scroll-smooth bg-slate-950/35">
+          <div
+            id="cardsLayer"
+            class="relative z-0 flex min-h-full flex-col items-stretch px-6 pb-40 md:pb-52 md:pl-[11rem]"
+          ></div>
+          <div
+            id="deckPile"
+            class="fixed -bottom-16 md:bottom-4 -left-24 top-auto z-[120] h-[176px] w-[240px] translate-y-0 cursor-pointer md:bottom-auto md:right-auto md:left-8 md:top-1/2 md:h-[252px] md:w-[152px] md:-translate-y-1/2"
+          ></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="drawModal" class="fixed inset-0 z-50 hidden grid place-items-center bg-black/60 px-4">
+      <div class="w-full max-w-sm rounded-2xl border border-violet-400/35 bg-slate-900 p-5 shadow-2xl">
+        <h3 class="text-lg font-bold">Cuantas cartas quieres sacar</h3>
+        <p id="modalRemainingText" class="mt-1 text-sm text-slate-300">Cartas restantes: 0</p>
+        <input
+          id="modalDrawCountInput"
+          type="number"
+          min="1"
+          value="3"
+          class="mt-4 w-full rounded-lg border border-slate-600 bg-slate-950/70 px-3 py-2 outline-none ring-violet-500 transition focus:ring"
+        />
+        <div class="mt-4 flex gap-3">
+          <button id="modalCancelBtn" class="flex-1 rounded-lg border border-slate-500 px-3 py-2 transition hover:bg-slate-800">
+            Cancelar
+          </button>
+          <button id="modalConfirmBtn" class="flex-1 rounded-lg bg-emerald-600 px-3 py-2 font-semibold transition hover:bg-emerald-500">
+            Sacar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="manualPickModal" class="fixed inset-0 z-[55] hidden grid place-items-center bg-black/65 px-3 py-4">
+      <div
+        class="flex max-h-[min(90vh,720px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-400/35 bg-slate-900 p-4 shadow-2xl sm:p-5"
+      >
+        <h3 class="text-lg font-bold text-amber-50">Que cartas salieron en esta tirada</h3>
+        <p id="manualPickModalHelp" class="mt-2 text-sm text-slate-300"></p>
+        <div
+          id="manualPickModalGrid"
+          class="mt-4 grid max-h-[min(52vh,420px)] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-5"
+        ></div>
+        <p id="manualPickModalCount" class="mt-3 text-sm text-amber-200/90"></p>
+        <div class="mt-4 flex shrink-0 gap-3 border-t border-amber-500/20 pt-4">
+          <button
+            id="manualPickCancelBtn"
+            type="button"
+            class="flex-1 rounded-lg border border-slate-500 px-3 py-2 transition hover:bg-slate-800"
+          >
+            Cancelar
+          </button>
+          <button
+            id="manualPickConfirmBtn"
+            type="button"
+            class="flex-1 rounded-lg bg-emerald-600 px-3 py-2 font-semibold transition hover:bg-emerald-500"
+          >
+            Confirmar tirada
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const IMAGE_BASE_URL = "https://raw.githubusercontent.com/metabismuth/tarot-json/master/cards";
+      const TAROT_API_ES_URL = "https://tarot-api-es.vercel.app/api/v1/cards";
+      const TAROT_API_EN_FALLBACK_URL = "https://tarotapi.dev/api/v1/cards";
+      const TAROT_CARD_BACK_SRC =
+        "data:image/svg+xml," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 600">' +
+            "<defs>" +
+            '<linearGradient id="b" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0" stop-color="#070b14"/>' +
+            '<stop offset="0.45" stop-color="#12182e"/>' +
+            '<stop offset="1" stop-color="#1a1028"/>' +
+            "</linearGradient>" +
+            '<pattern id="p" width="20" height="20" patternUnits="userSpaceOnUse">' +
+            '<path d="M0 10h20M10 0v20" stroke="#d4b04a" stroke-width="0.45" opacity="0.22"/>' +
+            "</pattern>" +
+            '<radialGradient id="r" cx="50%" cy="45%" r="65%">' +
+            '<stop offset="0" stop-color="#2a1f3d" stop-opacity="0.35"/>' +
+            '<stop offset="1" stop-color="#070b14" stop-opacity="0"/>' +
+            "</radialGradient>" +
+            "</defs>" +
+            '<rect width="350" height="600" fill="url(#b)"/>' +
+            '<rect width="350" height="600" fill="url(#p)"/>' +
+            '<rect width="350" height="600" fill="url(#r)"/>' +
+            '<rect x="11" y="11" width="328" height="578" fill="none" stroke="#c9a227" stroke-width="2.5"/>' +
+            '<rect x="24" y="24" width="302" height="552" fill="none" stroke="#6e5a3a" stroke-width="1" opacity="0.9"/>' +
+            '<circle cx="175" cy="300" r="72" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35"/>' +
+            '<polygon points="175,248 182,274 207,274 187,289 194,314 175,298 156,314 163,289 143,274 168,274" fill="#d4b04a" opacity="0.45"/>' +
+            "</svg>",
+        );
+      const MAJOR_ARCANA = [
+        "El Loco",
+        "El Mago",
+        "La Sacerdotisa",
+        "La Emperatriz",
+        "El Emperador",
+        "El Hierofante",
+        "Los Enamorados",
+        "El Carro",
+        "La Fuerza",
+        "El Ermitaño",
+        "La Rueda de la Fortuna",
+        "La Justicia",
+        "El Colgado",
+        "La Muerte",
+        "La Templanza",
+        "El Diablo",
+        "La Torre",
+        "La Estrella",
+        "La Luna",
+        "El Sol",
+        "El Juicio",
+        "El Mundo"
+      ];
+      const SUITS = [
+        { name: "Bastos", code: "w" },
+        { name: "Copas", code: "c" },
+        { name: "Espadas", code: "s" },
+        { name: "Oros", code: "p" }
+      ];
+      const RANKS = ["As", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Sota", "Caballo", "Reina", "Rey"];
+
+      const step1 = document.getElementById("step1");
+      const step2 = document.getElementById("step2");
+      const step3 = document.getElementById("step3");
+      const goRandomBtn = document.getElementById("goRandomBtn");
+      const goManualBtn = document.getElementById("goManualBtn");
+      const backToModeBtn = document.getElementById("backToModeBtn");
+      const step2Title = document.getElementById("step2Title");
+      const remainingText = document.getElementById("remainingText");
+      const drawCountInput = document.getElementById("drawCountInput");
+      const manualConfig = document.getElementById("manualConfig");
+      const manualHelper = document.getElementById("manualHelper");
+      const manualSearchInput = document.getElementById("manualSearchInput");
+      const manualCardList = document.getElementById("manualCardList");
+      const toAnimationBtn = document.getElementById("toAnimationBtn");
+      const animationStage = document.getElementById("animationStage");
+      const deckPile = document.getElementById("deckPile");
+      const cardsLayer = document.getElementById("cardsLayer");
+      const drawModal = document.getElementById("drawModal");
+      const modalRemainingText = document.getElementById("modalRemainingText");
+      const modalDrawCountInput = document.getElementById("modalDrawCountInput");
+      const modalCancelBtn = document.getElementById("modalCancelBtn");
+      const modalConfirmBtn = document.getElementById("modalConfirmBtn");
+      const manualPickModal = document.getElementById("manualPickModal");
+      const manualPickModalHelp = document.getElementById("manualPickModalHelp");
+      const manualPickModalGrid = document.getElementById("manualPickModalGrid");
+      const manualPickModalCount = document.getElementById("manualPickModalCount");
+      const manualPickCancelBtn = document.getElementById("manualPickCancelBtn");
+      const manualPickConfirmBtn = document.getElementById("manualPickConfirmBtn");
+      const randomDrawCountBlock = document.getElementById("randomDrawCountBlock");
+
+      function buildCard(id, name, imageFile) {
+        return { id, name, img: `${IMAGE_BASE_URL}/${imageFile}` };
+      }
+
+      function buildDeck() {
+        const deck = [];
+        MAJOR_ARCANA.forEach((name, index) => {
+          const code = `m${String(index).padStart(2, "0")}`;
+          deck.push(buildCard(code, name, `${code}.jpg`));
+        });
+        for (const suit of SUITS) {
+          RANKS.forEach((rank, index) => {
+            const number = String(index + 1).padStart(2, "0");
+            const code = `${suit.code}${number}`;
+            deck.push(buildCard(code, `${rank} de ${suit.name}`, `${code}.jpg`));
+          });
+        }
+        return deck;
+      }
+
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+
+      function ourCardIdToApiShort(cardId) {
+        if (!cardId) return null;
+        if (cardId.startsWith("m")) return `ar${cardId.slice(1)}`;
+        const suitPrefix = { w: "wa", c: "cu", s: "sw", p: "pe" };
+        const n = Number(cardId.slice(1));
+        const p = suitPrefix[cardId[0]];
+        if (!p || Number.isNaN(n)) return null;
+        if (n === 1) return `${p}ac`;
+        if (n >= 2 && n <= 10) return `${p}${String(n).padStart(2, "0")}`;
+        if (n === 11) return `${p}pa`;
+        if (n === 12) return `${p}kn`;
+        if (n === 13) return `${p}qu`;
+        if (n === 14) return `${p}ki`;
+        return null;
+      }
+
+      let meaningsByShort = null;
+      let meaningsFetchPromise = null;
+
+      function fillMeaningsMapFromPayload(payload) {
+        const map = new Map();
+        for (const c of payload.cards || []) {
+          const text = (c.meaning_up || "").replace(/\s+/g, " ").trim();
+          if (c.name_short && text) map.set(c.name_short, text);
+        }
+        return map;
+      }
+
+      function ensureTarotMeaningsLoaded() {
+        if (meaningsByShort) return Promise.resolve(meaningsByShort);
+        if (!meaningsFetchPromise) {
+          meaningsFetchPromise = fetch(TAROT_API_ES_URL)
+            .then((res) => {
+              if (!res.ok) throw new Error("ES API unavailable");
+              return res.json();
+            })
+            .then((payload) => {
+              meaningsByShort = fillMeaningsMapFromPayload(payload);
+              if (meaningsByShort.size === 0) throw new Error("No Spanish meanings");
+              return meaningsByShort;
+            })
+            .catch(() =>
+              fetch(TAROT_API_EN_FALLBACK_URL)
+                .then((res) => res.json())
+                .then((payload) => {
+                  meaningsByShort = fillMeaningsMapFromPayload(payload);
+                  return meaningsByShort;
+                })
+                .catch(() => {
+                  meaningsByShort = new Map();
+                  return meaningsByShort;
+                })
+            );
+        }
+        return meaningsFetchPromise;
+      }
+
+      function blurbMeaning(raw, maxLen) {
+        if (!raw)
+          return "No hay texto de referencia cargado en este momento. Conexion para significados Rider-Waite en español o ingles pendiente.";
+        const normalized = raw.trim();
+        if (normalized.length <= maxLen) return normalized;
+        return `${normalized.slice(0, Math.max(maxLen - 1, 0)).trimEnd()}…`;
+      }
+
+      function cardDescriptionBlurb(cardId) {
+        const short = ourCardIdToApiShort(cardId);
+        const raw = short && meaningsByShort ? meaningsByShort.get(short) : "";
+        return blurbMeaning(raw, 260);
+      }
+
+      let fullDeck = buildDeck();
+      let remainingDeck = [...fullDeck];
+      let currentMode = null;
+      let manualSelected = new Set();
+      let animating = false;
+      let revealedRounds = [];
+      let modalOpenRequested = false;
+      let activeCardTooltipWrap = null;
+      let sharedCardTarotTooltip = null;
+      let mahjongStrip = null;
+      let mahjongCardCount = 0;
+      let manualDeckPickSelections = new Set();
+
+      function clamp(n, lo, hi) {
+        return Math.min(Math.max(n, lo), hi);
+      }
+
+      function getSharedCardTarotTooltip() {
+        if (!sharedCardTarotTooltip) {
+          const el = document.createElement("div");
+          el.id = "sharedCardTarotTooltip";
+          el.role = "tooltip";
+          el.className =
+            "pointer-events-none fixed z-[9998] box-border overflow-y-auto bg-slate-900 px-3 py-2 text-left text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl transition-opacity duration-150 [-webkit-overflow-scrolling:touch]";
+          el.style.border = "solid 1px rgba(167,139,250,0.38)";
+          document.body.appendChild(el);
+          sharedCardTarotTooltip = el;
+        }
+        return sharedCardTarotTooltip;
+      }
+
+      function positionCardTooltip(wrapEl, tooltipEl) {
+        tooltipEl.style.position = "fixed";
+        tooltipEl.style.zIndex = "9999";
+        tooltipEl.style.backgroundColor = "#0f172a";
+        const margin = 12;
+        const gap = 12;
+        const vh = window.innerHeight;
+        const maxW = Math.min(296, Math.max(220, window.innerWidth - margin * 2));
+        const maxH = Math.min(320, Math.floor(vh * 0.44));
+        tooltipEl.style.maxWidth = `${maxW}px`;
+        tooltipEl.style.maxHeight = `${maxH}px`;
+        tooltipEl.style.width = "max-content";
+        tooltipEl.style.display = "block";
+        tooltipEl.style.visibility = "hidden";
+        tooltipEl.style.left = `${margin}px`;
+        tooltipEl.style.top = "0px";
+        const rect = wrapEl.getBoundingClientRect();
+        tooltipEl.offsetWidth;
+        const tw = tooltipEl.offsetWidth;
+        const th = tooltipEl.offsetHeight;
+        let top = rect.top - th - gap;
+        if (top < margin) {
+          top = rect.bottom + gap;
+        }
+        top = clamp(top, margin, vh - margin - th);
+        let left = rect.left + rect.width / 2 - tw / 2;
+        left = clamp(left, margin, window.innerWidth - margin - tw);
+        tooltipEl.style.visibility = "";
+        tooltipEl.style.left = `${left}px`;
+        tooltipEl.style.top = `${top}px`;
+      }
+
+      function attachCardTooltipBehavior(wrap, card) {
+        const tip = getSharedCardTarotTooltip();
+        const html = `
+            <p class="font-semibold text-violet-50">${escapeHtml(card.name)}</p>
+            <p class="mt-2 border-t border-violet-500/30 pt-2 text-slate-300">${escapeHtml(
+              cardDescriptionBlurb(card.id)
+            )}</p>
+          `;
+        wrap.addEventListener("mouseenter", () => {
+          activeCardTooltipWrap = wrap;
+          tip.innerHTML = html;
+          tip.style.opacity = "1";
+          positionCardTooltip(wrap, tip);
+        });
+        wrap.addEventListener("mouseleave", () => {
+          if (activeCardTooltipWrap === wrap) {
+            tip.style.opacity = "0";
+            tip.style.visibility = "";
+            activeCardTooltipWrap = null;
+          }
+        });
+      }
+
+      function buildManualCardThumbLabel(card) {
+        const label = document.createElement("label");
+        label.className =
+          "group flex cursor-pointer flex-col rounded-lg outline-none focus-within:ring-2 focus-within:ring-violet-500/55";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "peer sr-only";
+        input.dataset.cardId = card.id;
+        const frame = document.createElement("div");
+        frame.className =
+          "overflow-hidden rounded-lg border-2 border-slate-600/55 bg-neutral-950/95 transition peer-checked:border-amber-400 peer-checked:shadow-[0_0_0_1px_rgba(251,191,36,0.35)]";
+        const img = document.createElement("img");
+        img.src = card.img;
+        img.alt = "";
+        img.className =
+          "mx-auto block aspect-[350/600] w-full max-h-[7.25rem] object-contain object-center sm:max-h-32";
+        img.loading = "lazy";
+        frame.appendChild(img);
+        label.appendChild(input);
+        label.appendChild(frame);
+        attachCardTooltipBehavior(label, card);
+        return { label, input };
+      }
+
+      function refreshManualPickSelectionLabel() {
+        const n = manualDeckPickSelections.size;
+        manualPickModalCount.textContent = `Seleccionadas: ${n}`;
+      }
+
+      animationStage.addEventListener(
+        "scroll",
+        () => {
+          const tip = sharedCardTarotTooltip;
+          if (activeCardTooltipWrap && tip && tip.style.opacity === "1") {
+            positionCardTooltip(activeCardTooltipWrap, tip);
+          }
+        },
+        { passive: true }
+      );
+
+      window.addEventListener("resize", () => {
+        const tip = sharedCardTarotTooltip;
+        if (activeCardTooltipWrap && tip && tip.style.opacity === "1") {
+          positionCardTooltip(activeCardTooltipWrap, tip);
+        }
+      });
+
+      function setStep(stepNumber) {
+        step1.classList.toggle("hidden", stepNumber !== 1);
+        step2.classList.toggle("hidden", stepNumber !== 2);
+        step3.classList.toggle("hidden", stepNumber !== 3);
+      }
+
+      function updateRemainingText() {
+        remainingText.textContent = `Cartas restantes: ${remainingDeck.length}`;
+        drawCountInput.max = String(Math.max(1, remainingDeck.length));
+      }
+
+      function readCount() {
+        const value = Number(drawCountInput.value);
+        if (!Number.isInteger(value) || value < 1) return null;
+        if (value > remainingDeck.length) return null;
+        return value;
+      }
+
+      function viewportIsMdUp() {
+        return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 768px)").matches;
+      }
+
+      function tableCardLayout() {
+        if (viewportIsMdUp()) {
+          return {
+            tileW: 140,
+            overlapPx: 58,
+            rowMarginTop: -20,
+            dealX: -160,
+            dealY: 12,
+            deckLayerStep: 2,
+            stripWidthSlack: 208,
+            stripMinFallback: 260,
+            stripAvailBuffer: 48,
+          };
+        }
+        return {
+          tileW: 70,
+          overlapPx: 29,
+          rowMarginTop: -10,
+          dealX: -80,
+          dealY: 6,
+          deckLayerStep: 1,
+          stripWidthSlack: 56,
+          stripMinFallback: 180,
+          stripAvailBuffer: 36,
+        };
+      }
+
+      const MOBILE_DECK_FAN_W = 240;
+
+      function renderDeckPile() {
+        deckPile.innerHTML = "";
+        const L = tableCardLayout();
+        const layers = Math.max(1, Math.min(7, remainingDeck.length));
+        const mdUp = viewportIsMdUp();
+
+        for (let i = 0; i < layers; i += 1) {
+          const back = document.createElement("div");
+          back.className =
+            "absolute box-border aspect-[350/600] overflow-hidden border-2 border-violet-200/95 bg-neutral-950";
+          back.style.width = `${L.tileW}px`;
+
+          if (mdUp) {
+            const s = L.deckLayerStep;
+            back.style.left = `${i * s}px`;
+            back.style.top = `${i * -s}px`;
+            back.style.bottom = "";
+            back.style.marginLeft = "";
+            back.style.transform = "";
+            back.style.transformOrigin = "";
+            back.style.zIndex = "";
+          } else {
+            back.style.top = "";
+            const pivotX = (deckPile.offsetWidth || MOBILE_DECK_FAN_W) * 0.62;
+            back.style.left = `${pivotX}px`;
+            back.style.bottom = "10px";
+            back.style.marginLeft = `-${L.tileW / 2}px`;
+            back.style.transformOrigin = "bottom center";
+            const n = layers;
+            const spreadDeg = Math.min(44, 10 + (n - 1) * 6);
+            const step = n <= 1 ? 0 : spreadDeg / (n - 1);
+            const angleDeg = n <= 1 ? 0 : -spreadDeg / 2 + i * step;
+            back.style.transform = `rotate(${angleDeg}deg)`;
+            back.style.zIndex = String(10 + i);
+          }
+
+          back.innerHTML = `<img src="${TAROT_CARD_BACK_SRC}" alt="" class="block h-full w-full object-cover object-center" decoding="async" />`;
+          deckPile.appendChild(back);
+        }
+
+        window.requestAnimationFrame(() => {
+          if (viewportIsMdUp()) return;
+          const backs = deckPile.querySelectorAll(":scope > div");
+          const pivotX = (deckPile.offsetWidth || MOBILE_DECK_FAN_W) * 0.62;
+          backs.forEach((back) => {
+            back.style.left = `${pivotX}px`;
+          });
+        });
+
+        const clickable = remainingDeck.length > 0 && !animating;
+        deckPile.classList.toggle("cursor-pointer", clickable);
+        deckPile.classList.toggle("transition-transform", clickable && mdUp);
+        deckPile.classList.toggle("duration-200", clickable && mdUp);
+        deckPile.classList.toggle("hover:-translate-y-0.5", clickable && mdUp);
+      }
+
+      function setManualHelper() {
+        const n = manualSelected.size;
+        manualHelper.textContent =
+          n < 1
+            ? "Elige una o mas cartas en el panel (la cantidad elegida sera la tirada)."
+            : `Listas para la tirada: ${n} carta(s). Pulsa cuando quieras pasar a la mesa.`;
+        toAnimationBtn.disabled = n < 1;
+        toAnimationBtn.classList.toggle("opacity-40", toAnimationBtn.disabled);
+        toAnimationBtn.classList.toggle("cursor-not-allowed", toAnimationBtn.disabled);
+      }
+
+      function renderManualList() {
+        const q = manualSearchInput.value.trim().toLowerCase();
+        const filtered = remainingDeck.filter((card) => card.name.toLowerCase().includes(q));
+        manualCardList.innerHTML = "";
+
+        if (filtered.length === 0) {
+          manualCardList.innerHTML = '<p class="text-sm text-slate-300">No hay cartas para ese filtro.</p>';
+          return;
+        }
+
+        for (const card of filtered) {
+          const { label, input } = buildManualCardThumbLabel(card);
+          if (manualSelected.has(card.id)) input.checked = true;
+          manualCardList.appendChild(label);
+        }
+      }
+
+      function renderManualPickGrid() {
+        manualPickModalGrid.innerHTML = "";
+        refreshManualPickSelectionLabel();
+
+        for (const card of remainingDeck) {
+          const { label, input } = buildManualCardThumbLabel(card);
+          input.checked = manualDeckPickSelections.has(card.id);
+          input.addEventListener("change", () => {
+            if (input.checked) {
+              manualDeckPickSelections.add(card.id);
+            } else {
+              manualDeckPickSelections.delete(card.id);
+            }
+            refreshManualPickSelectionLabel();
+          });
+          manualPickModalGrid.appendChild(label);
+        }
+      }
+
+      async function openManualPickModal() {
+        manualDeckPickSelections = new Set();
+        manualPickModalHelp.textContent =
+          "Marca las cartas que salieron en esta tirada. Cuántas más elijas, más cartas revelará esta ronda y del mazo saldrá ese mismo número.";
+        refreshManualPickSelectionLabel();
+        manualPickModal.classList.remove("hidden");
+        await ensureTarotMeaningsLoaded();
+        renderManualPickGrid();
+      }
+
+      function closeManualPickModal() {
+        manualPickModal.classList.add("hidden");
+        manualDeckPickSelections = new Set();
+        manualPickModalGrid.innerHTML = "";
+        refreshManualPickSelectionLabel();
+      }
+
+      function enterStep2(mode) {
+        currentMode = mode;
+        manualSelected.clear();
+        updateRemainingText();
+        drawCountInput.value = "3";
+        drawCountInput.max = String(Math.max(1, remainingDeck.length));
+        step2Title.textContent = mode === "random" ? "Paso 2 - Aleatorio" : "Paso 2 - Manual";
+        randomDrawCountBlock.classList.toggle("hidden", mode === "manual");
+        manualConfig.classList.toggle("hidden", mode !== "manual");
+        if (mode === "manual") {
+          renderManualList();
+          setManualHelper();
+        } else {
+          toAnimationBtn.disabled = false;
+          toAnimationBtn.classList.remove("opacity-40", "cursor-not-allowed");
+        }
+        setStep(2);
+      }
+
+      function pickCardsForCurrentMode() {
+        if (currentMode === "random") {
+          const count = readCount();
+          if (!count) {
+            alert("Ingresa una cantidad valida de cartas.");
+            return null;
+          }
+          return shuffle([...remainingDeck]).slice(0, count);
+        }
+
+        if (manualSelected.size < 1) {
+          alert("Selecciona al menos una carta.");
+          return null;
+        }
+        return [...manualSelected].map((id) => remainingDeck.find((card) => card.id === id)).filter(Boolean);
+      }
+
+      async function animateReveal(cards, roundIndex) {
+        animating = true;
+        await ensureTarotMeaningsLoaded();
+        renderDeckPile();
+
+        if (!mahjongStrip) {
+          mahjongStrip = document.createElement("div");
+          cardsLayer.appendChild(mahjongStrip);
+        }
+        mahjongStrip.className =
+          "relative mx-auto flex w-full shrink-0 flex-row flex-wrap items-end justify-center gap-y-2 md:gap-y-8 self-center overflow-x-visible py-8 px-2 md:p-28";
+
+        const L = tableCardLayout();
+        const overlapPx = L.overlapPx;
+        const tileW = L.tileW;
+        const advance = tileW - overlapPx;
+
+        function mahjongTilesPerRow() {
+          let w = mahjongStrip.getBoundingClientRect().width;
+          if (w < advance + L.stripAvailBuffer) {
+            const sw = animationStage.getBoundingClientRect().width || window.innerWidth;
+            w = Math.max(L.stripMinFallback, sw - L.stripWidthSlack);
+          }
+          return Math.max(1, Math.floor((w - tileW) / advance) + 1);
+        }
+
+        cards.forEach((card, index) => {
+          const stackPos = mahjongCardCount++;
+          const perRow = mahjongTilesPerRow();
+          const colIndex = stackPos % perRow;
+          const rowIndex = Math.floor(stackPos / perRow);
+          const rotDeg = +(Math.random() * 8 - 4).toFixed(2);
+          const jitterX = +(Math.random() * 10 - 5).toFixed(1);
+          const jitterY = +(Math.random() * 10 - 5 + roundIndex * -1.8).toFixed(1);
+          const finalTransform = `translate(${jitterX}px, ${jitterY}px) rotate(${rotDeg}deg)`;
+
+          const wrap = document.createElement("div");
+          wrap.className =
+            "group relative shrink-0 origin-bottom [perspective:450px] md:[perspective:900px]";
+          wrap.style.width = `${tileW}px`;
+          wrap.style.marginLeft = colIndex === 0 ? "0" : `-${overlapPx}px`;
+          wrap.style.marginTop = rowIndex === 0 ? "0" : `${L.rowMarginTop}px`;
+          wrap.style.zIndex = String(500 + stackPos);
+          wrap.style.opacity = "0";
+          wrap.style.transform = `translate(${L.dealX}px, ${L.dealY}px) rotate(0deg)`;
+          wrap.style.transition = "transform 720ms cubic-bezier(0.2, 0.95, 0.25, 1), opacity 550ms ease-out";
+
+          const innerFlip = document.createElement("div");
+          innerFlip.className =
+            "relative aspect-[350/600] w-full origin-center [transform-style:preserve-3d] transition-transform duration-[680ms] ease-out";
+          innerFlip.innerHTML = `
+            <div class="absolute inset-0 box-border overflow-hidden rounded-none border-2 border-violet-200/95 bg-neutral-950 [backface-visibility:hidden]">
+              <img src="${TAROT_CARD_BACK_SRC}" alt="" class="block h-full w-full object-cover object-center" decoding="async" loading="lazy" />
+            </div>
+            <div class="absolute inset-0 overflow-hidden rounded-none bg-neutral-950 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+              <img src="${card.img}" alt="" class="block h-full w-full object-contain object-center bg-neutral-950" decoding="async" loading="lazy" />
+            </div>
+          `;
+          wrap.appendChild(innerFlip);
+          attachCardTooltipBehavior(wrap, card);
+          mahjongStrip.appendChild(wrap);
+
+          const dealDelay = 320 * index;
+          window.setTimeout(() => {
+            wrap.style.opacity = "1";
+            wrap.style.transform = finalTransform;
+          }, dealDelay);
+          window.setTimeout(() => {
+            innerFlip.classList.add("[transform:rotateY(180deg)]");
+          }, dealDelay + 420);
+        });
+
+        const totalMs = Math.max(cards.length * 320 + 750, (cards.length - 1) * 320 + 1100);
+        await new Promise((resolve) => window.setTimeout(resolve, totalMs));
+        animating = false;
+        if (modalOpenRequested && remainingDeck.length > 0) {
+          modalOpenRequested = false;
+          window.setTimeout(() => openDeckDrawPrompt(), 240);
+        }
+      }
+
+      async function startAnimationStep() {
+        if (animating) return;
+        const selected = pickCardsForCurrentMode();
+        if (!selected || selected.length === 0) return;
+
+        await revealSelectedCards(selected);
+
+        if (remainingDeck.length === 0) {
+          alert("Se acabaron las cartas del mazo.");
+        }
+      }
+
+      async function revealSelectedCards(selected) {
+        const roundIndex = revealedRounds.length;
+        revealedRounds.push([...selected]);
+        const selectedIds = new Set(selected.map((card) => card.id));
+        remainingDeck = remainingDeck.filter((card) => !selectedIds.has(card.id));
+        manualSelected.clear();
+        updateRemainingText();
+        setStep(3);
+        await animateReveal(selected, roundIndex);
+      }
+
+      function openRandomDrawCountModal() {
+        modalRemainingText.textContent = `Cartas restantes: ${remainingDeck.length}`;
+        modalDrawCountInput.max = String(remainingDeck.length);
+        modalDrawCountInput.value = String(Math.min(3, remainingDeck.length));
+        drawModal.classList.remove("hidden");
+        modalDrawCountInput.focus();
+      }
+
+      function openDeckDrawPrompt() {
+        if (remainingDeck.length === 0) return;
+        if (animating) {
+          modalOpenRequested = true;
+          return;
+        }
+        if (currentMode === "manual") {
+          void openManualPickModal();
+        } else {
+          openRandomDrawCountModal();
+        }
+      }
+
+      function closeDrawModal() {
+        modalOpenRequested = false;
+        drawModal.classList.add("hidden");
+      }
+
+      async function confirmDrawFromModal() {
+        if (animating) return;
+        const count = Number(modalDrawCountInput.value);
+        if (!Number.isInteger(count) || count < 1 || count > remainingDeck.length) {
+          alert("Cantidad invalida.");
+          return;
+        }
+        closeDrawModal();
+        const selected = shuffle([...remainingDeck]).slice(0, count);
+        await revealSelectedCards(selected);
+        if (remainingDeck.length === 0) {
+          alert("Se acabaron las cartas del mazo.");
+        }
+      }
+
+      goRandomBtn.addEventListener("click", () => enterStep2("random"));
+      goManualBtn.addEventListener("click", () => enterStep2("manual"));
+      backToModeBtn.addEventListener("click", () => setStep(1));
+      toAnimationBtn.addEventListener("click", startAnimationStep);
+      deckPile.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openDeckDrawPrompt();
+      });
+      modalCancelBtn.addEventListener("click", closeDrawModal);
+      modalConfirmBtn.addEventListener("click", () => {
+        void confirmDrawFromModal();
+      });
+      drawModal.addEventListener("click", (event) => {
+        if (event.target === drawModal) closeDrawModal();
+      });
+
+      manualPickCancelBtn.addEventListener("click", () => {
+        closeManualPickModal();
+      });
+      manualPickModal.addEventListener("click", (event) => {
+        if (event.target === manualPickModal) closeManualPickModal();
+      });
+      manualPickConfirmBtn.addEventListener("click", () => {
+        void (async () => {
+          if (animating) return;
+          if (manualDeckPickSelections.size < 1) {
+            alert("Selecciona al menos una carta.");
+            return;
+          }
+          const selected = [...manualDeckPickSelections]
+            .map((id) => remainingDeck.find((c) => c.id === id))
+            .filter(Boolean);
+          if (selected.length < 1) {
+            alert("Seleccion invalida.");
+            return;
+          }
+          manualPickModal.classList.add("hidden");
+          manualDeckPickSelections.clear();
+          manualPickModalGrid.innerHTML = "";
+          await revealSelectedCards(selected);
+          if (remainingDeck.length === 0) {
+            alert("Se acabaron las cartas del mazo.");
+          }
+        })();
+      });
+
+      manualSearchInput.addEventListener("input", renderManualList);
+
+      manualCardList.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!target || target.tagName !== "INPUT") return;
+        const cardId = target.getAttribute("data-card-id");
+        if (!cardId) return;
+
+        if (target.checked) {
+          manualSelected.add(cardId);
+        } else {
+          manualSelected.delete(cardId);
+        }
+        setManualHelper();
+      });
+
+      updateRemainingText();
+      setStep(1);
+      renderDeckPile();
+    </script>
+  </body>
+</html>
