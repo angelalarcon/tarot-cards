@@ -39,7 +39,12 @@
     </style>
   </head>
   <body class="min-h-screen bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)] text-slate-100">
-    <main class="mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
+    <div
+      id="step1Bg"
+      aria-hidden="true"
+      class="pointer-events-none fixed inset-0 z-0 hidden overflow-hidden opacity-10"
+    ></div>
+    <main class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
       <section id="step1">
         <h1 class="text-center text-3xl font-bold tracking-tight">Tarot</h1>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
@@ -760,12 +765,62 @@
         if (activeCardTooltipWrap && tip && tip.style.opacity === "1") {
           positionCardTooltip(activeCardTooltipWrap, tip);
         }
+        if (!step1.classList.contains("hidden")) {
+          renderStep1Background();
+        }
       });
 
       function setStep(stepNumber) {
         step1.classList.toggle("hidden", stepNumber !== 1);
         step2.classList.toggle("hidden", stepNumber !== 2);
         step3.classList.toggle("hidden", stepNumber !== 3);
+        const bg = document.getElementById("step1Bg");
+        if (bg) {
+          const showBg = stepNumber === 1;
+          bg.classList.toggle("hidden", !showBg);
+          if (showBg) renderStep1Background();
+        }
+      }
+
+      /** Genera un mosaico de siluetas de cartas vacías dispuestas en espiral de Arquímedes. */
+      function renderStep1Background() {
+        const bg = document.getElementById("step1Bg");
+        if (!bg) return;
+        bg.innerHTML = "";
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const cx = w / 2;
+        const cy = h / 2;
+        const maxR = Math.hypot(w, h) / 2 + 80;
+        const cardW = 22;
+        const cardH = 34;
+        const radialStep = 14;
+        const arcStep = 58;
+
+        let theta = 0.4;
+        let r = radialStep * theta;
+        let i = 0;
+
+        const frag = document.createDocumentFragment();
+        while (r < maxR && i < 800) {
+          const x = cx + r * Math.cos(theta);
+          const y = cy + r * Math.sin(theta);
+          const rotDeg = ((theta * 180) / Math.PI + 90) % 360;
+          const node = document.createElement("div");
+          node.className = "absolute rounded-[3px] border border-violet-200";
+          node.style.left = `${x}px`;
+          node.style.top = `${y}px`;
+          node.style.width = `${cardW}px`;
+          node.style.height = `${cardH}px`;
+          node.style.transform = `translate(-50%, -50%) rotate(${rotDeg}deg)`;
+          frag.appendChild(node);
+
+          const dTheta = arcStep / r;
+          theta += dTheta;
+          r = radialStep * theta;
+          i += 1;
+        }
+        bg.appendChild(frag);
       }
 
       function updateRemainingText() {
