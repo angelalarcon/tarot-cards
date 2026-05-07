@@ -20,7 +20,12 @@
     <main class="mx-auto max-w-6xl px-4 py-8 md:py-10">
       <section id="step1" class="mx-auto max-w-xl rounded-2xl border border-violet-400/35 bg-slate-900/70 p-6 shadow-2xl backdrop-blur md:p-8">
         <h1 class="text-center text-3xl font-bold tracking-tight">Tarot</h1>
-        <div class="mt-8 grid gap-4 md:grid-cols-2">
+        <label class="mt-6 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-slate-800/50 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800/70">
+          <input id="deckModeToggle" type="checkbox" class="h-4 w-4 cursor-pointer accent-violet-500" />
+          <span>Solo Arcanos Mayores</span>
+          <span class="text-xs text-slate-400">(22 cartas)</span>
+        </label>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
           <button id="goRandomBtn" class="rounded-xl bg-violet-600 px-4 py-4 text-lg font-semibold transition hover:bg-violet-500">
             No tengo cartas
           </button>
@@ -275,26 +280,32 @@
       const randomDrawCountBlock = document.getElementById("randomDrawCountBlock");
       const shareLinkBtn = document.getElementById("shareLinkBtn");
       const resetSessionBtn = document.getElementById("resetSessionBtn");
+      const deckModeToggle = document.getElementById("deckModeToggle");
 
       const SESSION_URL_PARAM = "r";
       const SESSION_STORAGE_KEY = "tarot:lastRounds";
+      const DECK_MODE_URL_PARAM = "d";
+      const DECK_MODE_STORAGE_KEY = "tarot:deckMode";
 
       function buildCard(id, name, imageFile) {
         return { id, name, img: `${IMAGE_BASE_URL}/${imageFile}` };
       }
 
-      function buildDeck() {
+      function buildDeck(mode) {
+        const onlyMajor = mode === "major";
         const deck = [];
         MAJOR_ARCANA.forEach((name, index) => {
           const code = `m${String(index).padStart(2, "0")}`;
           deck.push(buildCard(code, name, `${code}.jpg`));
         });
-        for (const suit of SUITS) {
-          RANKS.forEach((rank, index) => {
-            const number = String(index + 1).padStart(2, "0");
-            const code = `${suit.code}${number}`;
-            deck.push(buildCard(code, `${rank} de ${suit.name}`, `${code}.jpg`));
-          });
+        if (!onlyMajor) {
+          for (const suit of SUITS) {
+            RANKS.forEach((rank, index) => {
+              const number = String(index + 1).padStart(2, "0");
+              const code = `${suit.code}${number}`;
+              deck.push(buildCard(code, `${rank} de ${suit.name}`, `${code}.jpg`));
+            });
+          }
         }
         return deck;
       }
@@ -382,7 +393,8 @@
         return blurbMeaning(raw, 260);
       }
 
-      let fullDeck = buildDeck();
+      let deckMode = "full";
+      let fullDeck = buildDeck(deckMode);
       let remainingDeck = [...fullDeck];
       let currentMode = null;
       let manualSelected = new Set();
@@ -929,6 +941,70 @@
         return rounds;
       }
 
+      function applyDeckMode(newMode) {
+        deckMode = newMode === "major" ? "major" : "full";
+        fullDeck = buildDeck(deckMode);
+        if (deckModeToggle) {
+          deckModeToggle.checked = deckMode === "major";
+        }
+      }
+
+      function persistDeckMode() {
+        try {
+          const url = new URL(window.location.href);
+          if (deckMode === "major") {
+            url.searchParams.set(DECK_MODE_URL_PARAM, "major");
+          } else {
+            url.searchParams.delete(DECK_MODE_URL_PARAM);
+          }
+          window.history.replaceState(null, "", url.toString());
+        } catch (_) {}
+        try {
+          if (deckMode === "major") {
+            window.localStorage.setItem(DECK_MODE_STORAGE_KEY, "major");
+          } else {
+            window.localStorage.removeItem(DECK_MODE_STORAGE_KEY);
+          }
+        } catch (_) {}
+      }
+
+      function readDeckModeFromUrlOrStorage() {
+        let value = "";
+        try {
+          value = new URL(window.location.href).searchParams.get(DECK_MODE_URL_PARAM) || "";
+        } catch (_) {
+          value = "";
+        }
+        if (!value) {
+          try {
+            value = window.localStorage.getItem(DECK_MODE_STORAGE_KEY) || "";
+          } catch (_) {
+            value = "";
+          }
+        }
+        return value === "major" ? "major" : "full";
+      }
+
+      function changeDeckModeFromToggle() {
+        const newMode = deckModeToggle.checked ? "major" : "full";
+        if (newMode === deckMode) return;
+        applyDeckMode(newMode);
+        revealedRounds = [];
+        remainingDeck = [...fullDeck];
+        manualSelected.clear();
+        manualDeckPickSelections = new Set();
+        mahjongCardCount = 0;
+        if (mahjongStrip) {
+          mahjongStrip.innerHTML = "";
+        }
+        animating = false;
+        modalOpenRequested = false;
+        updateRemainingText();
+        renderDeckPile();
+        persistDeckMode();
+        persistSession();
+      }
+
       function persistSession() {
         const encoded = encodeRevealedRounds(revealedRounds);
         try {
@@ -1093,6 +1169,9 @@
         event.stopPropagation();
         void copyShareLinkToClipboard();
       });
+      deckModeToggle.addEventListener("change", () => {
+        changeDeckModeFromToggle();
+      });
       resetSessionBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         if (revealedRounds.length > 0) {
@@ -1177,6 +1256,8 @@
         deckPile.classList.add("deck-bounce-mobile");
       }, 10000);
 
+      applyDeckMode(readDeckModeFromUrlOrStorage());
+      remainingDeck = [...fullDeck];
       updateRemainingText();
       setStep(1);
       renderDeckPile();
