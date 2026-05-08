@@ -698,7 +698,6 @@
       }
 
       function attachCardTooltipBehavior(wrap, card) {
-        if (!prefersFinePointerHover()) return;
         const tip = getSharedCardTarotTooltip();
         const html = `
             <p class="font-semibold text-violet-50">${escapeHtml(card.name)}</p>
@@ -706,18 +705,33 @@
               cardDescriptionBlurb(card.id)
             )}</p>
           `;
-        wrap.addEventListener("mouseenter", () => {
+        const showTooltip = () => {
           activeCardTooltipWrap = wrap;
           tip.innerHTML = html;
           tip.style.opacity = "1";
           positionCardTooltip(wrap, tip);
-        });
-        wrap.addEventListener("mouseleave", () => {
+        };
+        const hideTooltip = () => {
           if (activeCardTooltipWrap === wrap) {
             tip.style.opacity = "0";
             tip.style.visibility = "";
             activeCardTooltipWrap = null;
           }
+        };
+
+        if (prefersFinePointerHover()) {
+          wrap.addEventListener("mouseenter", showTooltip);
+          wrap.addEventListener("mouseleave", hideTooltip);
+          return;
+        }
+
+        wrap.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (activeCardTooltipWrap === wrap && tip.style.opacity === "1") {
+            hideTooltip();
+            return;
+          }
+          showTooltip();
         });
       }
 
@@ -768,6 +782,16 @@
         if (!step1.classList.contains("hidden")) {
           renderStep1Background();
         }
+      });
+
+      document.addEventListener("click", (event) => {
+        const tip = sharedCardTarotTooltip;
+        if (!activeCardTooltipWrap || !tip || tip.style.opacity !== "1") return;
+        const target = event.target;
+        if (target instanceof Node && activeCardTooltipWrap.contains(target)) return;
+        tip.style.opacity = "0";
+        tip.style.visibility = "";
+        activeCardTooltipWrap = null;
       });
 
       function setStep(stepNumber) {
