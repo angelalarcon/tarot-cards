@@ -429,12 +429,21 @@
         return null;
       }
 
+      function shortWords(text, maxWords) {
+        const words = String(text || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(Boolean);
+        return words.slice(0, maxWords).join(" ");
+      }
+
       function formatBanzhafReading(parts) {
         return [
-          `Mensaje global: ${parts.message}`,
-          `Plano profesional/trabajo: ${parts.work}`,
-          `Plano de la conciencia: ${parts.consciousness}`,
-          `Plano de las relaciones/amor: ${parts.relationships}`
+          shortWords(parts.message, 14),
+          `Trabajo: ${shortWords(parts.work, 10)}.`,
+          `Conciencia: ${shortWords(parts.consciousness, 10)}.`,
+          `Amor: ${shortWords(parts.relationships, 10)}.`
         ].join(" ");
       }
 
@@ -772,16 +781,16 @@
         if (!raw)
           return "No hay texto de referencia cargado en este momento. Conexion para significados Rider-Waite en español o ingles pendiente.";
         const normalized = raw.trim();
-        if (normalized.length <= maxLen) return normalized;
-        return `${normalized.slice(0, Math.max(maxLen - 1, 0)).trimEnd()}…`;
+        if (!maxLen || normalized.length <= maxLen) return normalized;
+        return normalized.slice(0, maxLen).trim();
       }
 
       function cardDescriptionBlurb(cardId) {
         const guided = cardId && CARD_INSIGHT_BLURBS[cardId];
-        if (guided) return blurbMeaning(guided, 300);
+        if (guided) return blurbMeaning(guided);
         const short = ourCardIdToApiShort(cardId);
         const raw = short && meaningsByShort ? meaningsByShort.get(short) : "";
-        return blurbMeaning(raw, 260);
+        return blurbMeaning(shortWords(raw, 34));
       }
 
       let deckMode = "full";
