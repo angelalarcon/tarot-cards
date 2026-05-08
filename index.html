@@ -440,10 +440,10 @@
 
       function formatBanzhafReading(parts) {
         return [
-          shortWords(parts.message, 14),
-          `Trabajo: ${shortWords(parts.work, 10)}.`,
-          `Conciencia: ${shortWords(parts.consciousness, 10)}.`,
-          `Amor: ${shortWords(parts.relationships, 10)}.`
+          shortWords(parts.message, 9),
+          `Trabajo: ${shortWords(parts.work, 6)}.`,
+          `Conciencia: ${shortWords(parts.consciousness, 6)}.`,
+          `Amor: ${shortWords(parts.relationships, 6)}.`
         ].join(" ");
       }
 
@@ -790,7 +790,7 @@
         if (guided) return blurbMeaning(guided);
         const short = ourCardIdToApiShort(cardId);
         const raw = short && meaningsByShort ? meaningsByShort.get(short) : "";
-        return blurbMeaning(shortWords(raw, 34));
+        return blurbMeaning(shortWords(raw, 20));
       }
 
       let deckMode = "full";
@@ -834,7 +834,7 @@
           el.id = "sharedCardTarotTooltip";
           el.role = "tooltip";
           el.className =
-            "pointer-events-none fixed z-[9998] box-border overflow-y-auto bg-slate-900 px-3 py-2 text-left text-[14px] md:text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl transition-opacity duration-150 [-webkit-overflow-scrolling:touch]";
+            "pointer-events-none fixed z-[9998] box-border overflow-y-auto bg-slate-900 px-3 py-2 text-left text-[12px] md:text-[11px] leading-snug text-violet-50 opacity-0 shadow-xl transition-opacity duration-150 [-webkit-overflow-scrolling:touch]";
           el.style.border = "solid 1px rgba(167,139,250,0.38)";
           document.body.appendChild(el);
           sharedCardTarotTooltip = el;
@@ -870,7 +870,9 @@
         const maxW = Math.min(296, Math.max(220, window.innerWidth - margin * 2));
         const reservedBottom = topReservedAreaBottom(wrapEl);
         const topBoundary = Math.max(margin, reservedBottom + gap);
-        const maxH = Math.min(320, Math.floor(vh * 0.44), Math.max(80, vh - topBoundary - margin));
+        const maxH = prefersFinePointerHover()
+          ? Math.min(320, Math.floor(vh * 0.44), Math.max(80, vh - topBoundary - margin))
+          : Math.min(420, Math.floor(vh * 0.72), Math.max(120, vh - topBoundary - margin));
         tooltipEl.style.maxWidth = `${maxW}px`;
         tooltipEl.style.maxHeight = `${maxH}px`;
         tooltipEl.style.width = "max-content";
