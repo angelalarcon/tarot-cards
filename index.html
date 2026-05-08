@@ -27,6 +27,12 @@
       .card-deal-wrap.card-deal-done {
         will-change: auto;
       }
+      .table-card {
+        transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), z-index 0ms linear;
+      }
+      .table-card.table-card-hovered {
+        z-index: 9000 !important;
+      }
       .quantity-stepper-input::-webkit-outer-spin-button,
       .quantity-stepper-input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -439,10 +445,14 @@
       }
 
       function buildCard(id, name, imageFile) {
+        const staticSource = `${IMAGE_BASE_URL}/${imageFile}`;
+        const optimizedStaticSource =
+          `https://wsrv.nl/?url=${encodeURIComponent(staticSource.replace(/^https?:\/\//, ""))}` +
+          "&w=700&q=72&output=webp";
         return {
           id,
           name,
-          img: animatedImageForCardId(id) || `${IMAGE_BASE_URL}/${imageFile}`
+          img: animatedImageForCardId(id) || optimizedStaticSource
         };
       }
 
@@ -1053,6 +1063,35 @@
         });
       }
 
+      function hoverFrontTransform(baseTransform) {
+        const base = String(baseTransform || "").trim();
+        if (!base) return "scale(1.1) rotate(0deg)";
+        const withScale = /scale\([^)]*\)/.test(base)
+          ? base.replace(/scale\([^)]*\)/, "scale(1.13)")
+          : `${base} scale(1.13)`;
+        return /rotate\([^)]*\)/.test(withScale)
+          ? withScale.replace(/rotate\([^)]*\)/, "rotate(0deg)")
+          : `${withScale} rotate(0deg)`;
+      }
+
+      function attachCardHoverFrontBehavior(wrap) {
+        if (!prefersFinePointerHover()) return;
+        let baseTransform = "";
+        const elevate = () => {
+          if (!baseTransform) {
+            baseTransform = wrap.dataset.baseTransform || wrap.style.transform || "";
+          }
+          wrap.classList.add("table-card-hovered");
+          wrap.style.transform = hoverFrontTransform(baseTransform);
+        };
+        const restore = () => {
+          wrap.classList.remove("table-card-hovered");
+          wrap.style.transform = baseTransform || wrap.dataset.baseTransform || wrap.style.transform;
+        };
+        wrap.addEventListener("mouseenter", elevate);
+        wrap.addEventListener("mouseleave", restore);
+      }
+
       function buildManualCardThumbLabel(card) {
         const label = document.createElement("label");
         label.className =
@@ -1466,7 +1505,7 @@
 
           const wrap = document.createElement("div");
           wrap.className =
-            "group relative shrink-0 origin-bottom [perspective:450px] md:[perspective:900px]";
+            "group relative shrink-0 origin-bottom [perspective:450px] md:[perspective:900px] table-card";
           wrap.style.width = `${tileW}px`;
           wrap.style.marginLeft = colIndex === 0 ? "0" : `-${overlapPx}px`;
           wrap.style.marginTop = rowIndex === 0 ? "0" : `${L.rowMarginTop}px`;
@@ -1474,6 +1513,7 @@
           if (instant) {
             wrap.style.opacity = "1";
             wrap.style.transform = finalTransform;
+            wrap.dataset.baseTransform = finalTransform;
           } else {
             wrap.classList.add("card-deal-wrap");
             wrap.style.opacity = "0";
@@ -1502,6 +1542,7 @@
           `;
           wrap.appendChild(innerFlip);
           attachCardTooltipBehavior(wrap, card);
+          attachCardHoverFrontBehavior(wrap);
           mahjongStrip.appendChild(wrap);
         });
 
@@ -1526,6 +1567,7 @@
             window.setTimeout(() => {
               wrap.style.opacity = "1";
               wrap.style.transform = finalTransform;
+              wrap.dataset.baseTransform = finalTransform;
             }, dealDelay);
             window.setTimeout(() => {
               innerFlip.classList.add("[transform:rotateY(180deg)]");
