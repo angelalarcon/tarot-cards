@@ -465,12 +465,34 @@
         return /[.!?]$/.test(clean) ? clean : `${clean}.`;
       }
 
+      function lowerFirst(text) {
+        const clean = String(text || "").trim();
+        if (!clean) return "";
+        return clean.charAt(0).toLowerCase() + clean.slice(1);
+      }
+
+      function normalizeFragment(text) {
+        return removeCardIdentityTerms(text)
+          .replace(/[.!?]+$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
       function formatBanzhafReading(parts) {
+        const message = normalizeFragment(parts.message);
+        const consciousness = normalizeFragment(parts.consciousness);
+        const work = normalizeFragment(parts.work);
+        const relationships = normalizeFragment(parts.relationships);
+
         const reflection = normalizeSentence(
-          `${parts.message} ${parts.consciousness} Llevado a tu proceso actual, esta carta te pide presencia y honestidad con lo que sientes.`
+          `Tu lectura te muestra esto de forma directa: ${message}. En tu mundo interno, ${lowerFirst(
+            consciousness
+          )}.`
         );
         const advice = normalizeSentence(
-          `Llevalo a lo concreto hoy: ${parts.work} ${parts.relationships}`
+          `Para ti, hoy toca llevarlo a lo concreto: en tu trabajo, ${lowerFirst(work)}; en tus vinculos, ${lowerFirst(
+            relationships
+          )}.`
         );
         return [reflection, `Consejo: ${advice}`].filter(Boolean).join(" ");
       }
