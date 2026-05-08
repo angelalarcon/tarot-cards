@@ -446,13 +446,20 @@
 
       function buildCard(id, name, imageFile) {
         const staticSource = `${IMAGE_BASE_URL}/${imageFile}`;
+        const animatedSource = animatedImageForCardId(id);
         const optimizedStaticSource =
           `https://wsrv.nl/?url=${encodeURIComponent(staticSource.replace(/^https?:\/\//, ""))}` +
           "&w=700&q=72&output=webp";
+        const pausedGifFrameSource = animatedSource
+          ? `https://wsrv.nl/?url=${encodeURIComponent(animatedSource.replace(/^https?:\/\//, ""))}&w=700&q=72&output=webp&n=1`
+          : "";
+        const previewSource = pausedGifFrameSource || optimizedStaticSource;
         return {
           id,
           name,
-          img: animatedImageForCardId(id) || optimizedStaticSource
+          img: previewSource,
+          staticImg: previewSource,
+          animatedImg: animatedSource || ""
         };
       }
 
@@ -924,13 +931,64 @@
       let revealedRounds = [];
       let modalOpenRequested = false;
       let activeCardTooltipWrap = null;
+      let activeFrontCardWrap = null;
       let sharedCardTarotTooltip = null;
       let mahjongStrip = null;
       let mahjongCardCount = 0;
       let manualDeckPickSelections = new Set();
+      const imagePreloadCache = new Map();
 
       function clamp(n, lo, hi) {
         return Math.min(Math.max(n, lo), hi);
+      }
+
+      function preloadImage(src) {
+        const key = String(src || "").trim();
+        if (!key) return Promise.resolve();
+        const cached = imagePreloadCache.get(key);
+        if (cached) return cached;
+        const promise = new Promise((resolve) => {
+          const img = new Image();
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          };
+          img.onload = finish;
+          img.onerror = finish;
+          img.src = key;
+          if (img.complete) finish();
+        });
+        imagePreloadCache.set(key, promise);
+        return promise;
+      }
+
+      function preloadCardMedia(cards) {
+        const staticSources = new Set();
+        const animatedSources = new Set();
+        for (const card of cards || []) {
+          const staticSrc = String(card?.staticImg || card?.img || "").trim();
+          const animatedSrc = String(card?.animatedImg || "").trim();
+          if (staticSrc) staticSources.add(staticSrc);
+          if (animatedSrc) animatedSources.add(animatedSrc);
+        }
+        const staticList = [...staticSources];
+        const animatedList = [...animatedSources];
+        return Promise.all(staticList.map((src) => preloadImage(src))).then(() => {
+          animatedList.forEach((src) => {
+            void preloadImage(src);
+          });
+        });
+      }
+
+      function withTimeout(promise, timeoutMs) {
+        return Promise.race([
+          promise,
+          new Promise((resolve) => {
+            window.setTimeout(resolve, timeoutMs);
+          })
+        ]);
       }
 
       function bindQuantityStepper(inputId, decId, incId) {
@@ -1075,21 +1133,51 @@
       }
 
       function attachCardHoverFrontBehavior(wrap) {
-        if (!prefersFinePointerHover()) return;
         let baseTransform = "";
         const elevate = () => {
           if (!baseTransform) {
             baseTransform = wrap.dataset.baseTransform || wrap.style.transform || "";
           }
+          if (activeFrontCardWrap && activeFrontCardWrap !== wrap) {
+            activeFrontCardWrap.classList.remove("table-card-hovered");
+            activeFrontCardWrap.style.transform =
+              activeFrontCardWrap.dataset.baseTransform || activeFrontCardWrap.style.transform;
+          }
+          activeFrontCardWrap = wrap;
           wrap.classList.add("table-card-hovered");
           wrap.style.transform = hoverFrontTransform(baseTransform);
         };
         const restore = () => {
           wrap.classList.remove("table-card-hovered");
           wrap.style.transform = baseTransform || wrap.dataset.baseTransform || wrap.style.transform;
+          if (activeFrontCardWrap === wrap) {
+            activeFrontCardWrap = null;
+          }
         };
-        wrap.addEventListener("mouseenter", elevate);
-        wrap.addEventListener("mouseleave", restore);
+        if (prefersFinePointerHover()) {
+          wrap.addEventListener("mouseenter", elevate);
+          wrap.addEventListener("mouseleave", restore);
+          return;
+        }
+        wrap.addEventListener("click", () => {
+          if (activeFrontCardWrap === wrap) {
+            restore();
+            return;
+          }
+          elevate();
+        });
+      }
+
+      function attachCardAnimatedPreviewBehavior(hoverTarget, imgEl, card) {
+        if (!prefersFinePointerHover()) return;
+        if (!imgEl || !card || !card.animatedImg) return;
+        imgEl.src = card.staticImg || card.img;
+        hoverTarget.addEventListener("mouseenter", () => {
+          imgEl.src = card.animatedImg;
+        });
+        hoverTarget.addEventListener("mouseleave", () => {
+          imgEl.src = card.staticImg || card.img;
+        });
       }
 
       function buildManualCardThumbLabel(card) {
@@ -1112,6 +1200,7 @@
         label.appendChild(input);
         label.appendChild(frame);
         attachCardTooltipBehavior(label, card);
+        attachCardAnimatedPreviewBehavior(label, img, card);
         return { label, input };
       }
 
@@ -1149,6 +1238,16 @@
         tip.style.opacity = "0";
         tip.style.visibility = "";
         activeCardTooltipWrap = null;
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!activeFrontCardWrap) return;
+        const target = event.target;
+        if (target instanceof Node && activeFrontCardWrap.contains(target)) return;
+        activeFrontCardWrap.classList.remove("table-card-hovered");
+        activeFrontCardWrap.style.transform =
+          activeFrontCardWrap.dataset.baseTransform || activeFrontCardWrap.style.transform;
+        activeFrontCardWrap = null;
       });
 
       function setStep(stepNumber) {
@@ -1329,9 +1428,9 @@
 
         const clickable = remainingDeck.length > 0 && !animating;
         deckPile.classList.toggle("cursor-pointer", clickable);
-        deckPile.classList.toggle("transition-transform", clickable && mdUp);
-        deckPile.classList.toggle("duration-200", clickable && mdUp);
-        deckPile.classList.toggle("hover:-translate-y-0.5", clickable && mdUp);
+        deckPile.classList.toggle("transition-transform", false);
+        deckPile.classList.toggle("duration-200", false);
+        deckPile.classList.toggle("hover:-translate-y-0.5", false);
       }
 
       function setManualHelper() {
@@ -1467,7 +1566,11 @@
       async function animateReveal(cards, roundIndex, opts) {
         const instant = Boolean(opts && opts.instant);
         if (!instant) animating = true;
-        await ensureTarotMeaningsLoaded();
+        const mediaReady = preloadCardMedia(cards);
+        await Promise.all([
+          ensureTarotMeaningsLoaded(),
+          instant ? mediaReady : withTimeout(mediaReady, 3500)
+        ]);
         renderDeckPile();
 
         if (!mahjongStrip) {
@@ -1537,12 +1640,14 @@
               <img src="${TAROT_CARD_BACK_SRC}" alt="" class="block h-full w-full object-cover object-center" decoding="async" loading="lazy" />
             </div>
             <div class="absolute inset-0 overflow-hidden rounded-none bg-neutral-950 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-              <img src="${card.img}" alt="" class="block h-full w-full object-contain object-center bg-neutral-950" decoding="async" loading="lazy" />
+              <img src="${card.staticImg || card.img}" alt="" class="card-face-media block h-full w-full object-contain object-center bg-neutral-950" decoding="async" loading="lazy" />
             </div>
           `;
           wrap.appendChild(innerFlip);
           attachCardTooltipBehavior(wrap, card);
           attachCardHoverFrontBehavior(wrap);
+          const faceImg = wrap.querySelector(".card-face-media");
+          attachCardAnimatedPreviewBehavior(wrap, faceImg, card);
           mahjongStrip.appendChild(wrap);
         });
 
