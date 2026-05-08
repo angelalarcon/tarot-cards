@@ -278,6 +278,7 @@
 
     <script>
       const IMAGE_BASE_URL = "https://raw.githubusercontent.com/metabismuth/tarot-json/master/cards";
+      const ANIMATED_IMAGE_BASE_URL = "https://kamiareo.com/wp-content/uploads/2023/12";
       const TAROT_API_ES_URL = "https://tarot-api-es.vercel.app/api/v1/cards";
       const TAROT_API_EN_FALLBACK_URL = "https://tarotapi.dev/api/v1/cards";
       const TAROT_CARD_BACK_SRC =
@@ -338,6 +339,43 @@
         { name: "Oros", code: "p" }
       ];
       const RANKS = ["As", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Sota", "Caballo", "Reina", "Rey"];
+      const MAJOR_ANIMATED_FILENAMES = [
+        "0-The-Fool.gif",
+        "I-The-Magician.gif",
+        "II-The-High-Priestess3.gif",
+        "III-The-Empress.gif",
+        "IV-The-Emperor.gif",
+        "V-The-Hierophant.gif",
+        "VI-Lovers.gif",
+        "VII-Chariot.gif",
+        "VIII-Strength.gif",
+        "IX-The-Hermit.gif",
+        "X-Wheel-of-Fortune.gif",
+        "XI-Justice.gif",
+        "XII-The-Hanged-Man.gif",
+        "XIII-Death.gif",
+        "XIV-Temperance.gif",
+        "XV-The-Devil.gif",
+        "XVI-Tower.gif",
+        "XVII-The-Star.gif",
+        "XVIII-The-Moon.gif",
+        "XIX-The-Sun.gif",
+        "XX-Judgement.gif",
+        "XXI-The-World.gif"
+      ];
+      const MINOR_SUIT_ANIMATED_NAME = {
+        w: "Wands",
+        c: "Cups",
+        s: "Swords",
+        p: "Coins"
+      };
+      const MINOR_RANK_ANIMATED_NAME = {
+        "01": "Ace",
+        "11": "Page",
+        "12": "Knight",
+        "13": "Queen",
+        "14": "King"
+      };
 
       const step1 = document.getElementById("step1");
       const step2 = document.getElementById("step2");
@@ -378,8 +416,34 @@
       const DECK_MODE_URL_PARAM = "d";
       const DECK_MODE_STORAGE_KEY = "tarot:deckMode";
 
+      function animatedImageForCardId(cardId) {
+        if (!cardId) return "";
+        if (cardId.startsWith("m")) {
+          const majorIndex = Number(cardId.slice(1));
+          const majorFile = MAJOR_ANIMATED_FILENAMES[majorIndex];
+          return majorFile ? `${ANIMATED_IMAGE_BASE_URL}/${majorFile}` : "";
+        }
+        const suitCode = cardId.charAt(0);
+        const rankCode = cardId.slice(1);
+        const suitName = MINOR_SUIT_ANIMATED_NAME[suitCode];
+        if (!suitName) return "";
+        if (/^(0[2-9]|10)$/.test(rankCode)) {
+          const numeric = String(Number(rankCode));
+          const cupsNeedsVariant2 = suitCode === "c" && Number(rankCode) >= 7;
+          const cupsSuffix = cupsNeedsVariant2 ? "2" : "";
+          return `${ANIMATED_IMAGE_BASE_URL}/${numeric}-${suitName.toLowerCase()}${cupsSuffix}.gif`;
+        }
+        const rankName = MINOR_RANK_ANIMATED_NAME[rankCode];
+        if (!rankName) return "";
+        return `${ANIMATED_IMAGE_BASE_URL}/${rankName}-of-${suitName}.gif`;
+      }
+
       function buildCard(id, name, imageFile) {
-        return { id, name, img: `${IMAGE_BASE_URL}/${imageFile}` };
+        return {
+          id,
+          name,
+          img: animatedImageForCardId(id) || `${IMAGE_BASE_URL}/${imageFile}`
+        };
       }
 
       function buildDeck(mode) {
@@ -485,14 +549,14 @@
         const relationships = normalizeFragment(parts.relationships);
 
         const reflection = normalizeSentence(
-          `${message}. En tu mundo interno, ${lowerFirst(consciousness)}.`
+          `${message}. En tu interior, ${lowerFirst(consciousness)}.`
         );
         const advice = normalizeSentence(
-          `Para ti, hoy toca llevarlo a lo concreto: en tu trabajo, ${lowerFirst(work)}; en tus vinculos, ${lowerFirst(
+          `en tu trabajo, ${lowerFirst(work)}; en tus vinculos, ${lowerFirst(
             relationships
           )}.`
         );
-        return [reflection, `Consejo: ${advice}`].filter(Boolean).join(" ");
+        return [reflection, `Mi consejo es llevarlo a lo concreto: ${advice}`].filter(Boolean).join(" ");
       }
 
       function buildMinorArcanaInsightBlurbs() {
@@ -534,101 +598,101 @@
         const rankProfiles = [
           {
             title: "As",
-            message: (s) => `${s.name} abre un nuevo ciclo en ${s.journey}.`,
-            work: (s) => `Inicia una accion simple y verificable en ${s.work}.`,
-            consciousness: (s) => `Reconoce la chispa interna en ${s.consciousness} y dale direccion.`,
-            relationships: (s) => `Da un primer paso sincero en ${s.relationships}, sin idealizar.`
+            message: (s) => `Te abro un nuevo ciclo en ${s.journey}.`,
+            work: (s) => `Te impulso a iniciar una accion simple y verificable en ${s.work}.`,
+            consciousness: (s) => `Te invito a reconocer la chispa interna en ${s.consciousness} y darle direccion.`,
+            relationships: (s) => `Te animo a dar un primer paso sincero en ${s.relationships}, sin idealizar.`
           },
           {
             title: "Dos",
-            message: (s) => `Dos de ${s.name} propone integrar polaridades en ${s.journey}.`,
-            work: (s) => `Busca equilibrio entre opciones en ${s.work} antes de decidir.`,
-            consciousness: (s) => `Observa tensiones internas en ${s.consciousness} y nombra ambas necesidades.`,
-            relationships: (s) => `Favorece dialogo y escucha mutua en ${s.relationships}.`
+            message: (s) => `Te propongo integrar polaridades en ${s.journey}.`,
+            work: (s) => `Te invito a buscar equilibrio entre opciones en ${s.work} antes de decidir.`,
+            consciousness: (s) => `Te muestro tensiones internas en ${s.consciousness}, donde puedes nombrar ambas necesidades.`,
+            relationships: (s) => `Favorezco el dialogo y la escucha mutua en ${s.relationships}.`
           },
           {
             title: "Tres",
-            message: (s) => `Tres de ${s.name} muestra expansion y aprendizaje compartido en ${s.journey}.`,
-            work: (s) => `Aprovecha alianzas y colaboracion en ${s.work}.`,
-            consciousness: (s) => `Integra lo aprendido en ${s.consciousness} con confianza realista.`,
-            relationships: (s) => `Abre espacio para celebrar avances en ${s.relationships}.`
+            message: (s) => `Te muestro expansion y aprendizaje compartido en ${s.journey}.`,
+            work: (s) => `Te invito a aprovechar alianzas y colaboracion en ${s.work}.`,
+            consciousness: (s) => `Te ayudo a integrar lo aprendido en ${s.consciousness} con confianza realista.`,
+            relationships: (s) => `Te abro espacio para celebrar avances en ${s.relationships}.`
           },
           {
             title: "Cuatro",
-            message: (s) => `Cuatro de ${s.name} invita a consolidar bases en ${s.journey}.`,
-            work: (s) => `Ordena procesos y protege energia en ${s.work}.`,
-            consciousness: (s) => `Revisa donde la busqueda de control afecta ${s.consciousness}.`,
-            relationships: (s) => `Construye seguridad en ${s.relationships} sin cerrarte al cambio.`
+            message: (s) => `Te invito a consolidar bases en ${s.journey}.`,
+            work: (s) => `Te pido ordenar procesos y proteger tu energia en ${s.work}.`,
+            consciousness: (s) => `Te muestro donde la busqueda de control afecta ${s.consciousness}.`,
+            relationships: (s) => `Te ayudo a construir seguridad en ${s.relationships} sin cerrarte al cambio.`
           },
           {
             title: "Cinco",
-            message: (s) => `Cinco de ${s.name} marca una prueba de crecimiento en ${s.journey}.`,
-            work: (s) => `Lee el conflicto en ${s.work} como oportunidad de ajuste.`,
-            consciousness: (s) => `Detecta la herida activa en ${s.consciousness} sin juzgarte.`,
-            relationships: (s) => `Practica limites y reparacion en ${s.relationships}.`
+            message: (s) => `Te marco una prueba de crecimiento en ${s.journey}.`,
+            work: (s) => `Te invito a leer el conflicto en ${s.work} como oportunidad de ajuste.`,
+            consciousness: (s) => `Te ayudo a detectar la herida activa en ${s.consciousness} sin juzgarte.`,
+            relationships: (s) => `Te impulso a practicar limites y reparacion en ${s.relationships}.`
           },
           {
             title: "Seis",
-            message: (s) => `Seis de ${s.name} describe transicion y reorganizacion en ${s.journey}.`,
-            work: (s) => `Acepta apoyos concretos en ${s.work} y mejora el rumbo.`,
-            consciousness: (s) => `Observa como evoluciona ${s.consciousness} al dejar una narrativa antigua.`,
-            relationships: (s) => `Promueve reconciliacion y calma en ${s.relationships}.`
+            message: (s) => `Te describo transicion y reorganizacion en ${s.journey}.`,
+            work: (s) => `Te invito a aceptar apoyos concretos en ${s.work} y a mejorar el rumbo.`,
+            consciousness: (s) => `Te muestro como evoluciona ${s.consciousness} al dejar atras una narrativa antigua.`,
+            relationships: (s) => `Promuevo reconciliacion y calma en ${s.relationships}.`
           },
           {
             title: "Siete",
-            message: (s) => `Siete de ${s.name} pide estrategia consciente en ${s.journey}.`,
-            work: (s) => `Defiende prioridades en ${s.work} con criterio y claridad.`,
-            consciousness: (s) => `Distingue intuicion de temor en ${s.consciousness}.`,
-            relationships: (s) => `Cuida acuerdos y fronteras sanas en ${s.relationships}.`
+            message: (s) => `Te pido estrategia consciente en ${s.journey}.`,
+            work: (s) => `Te invito a defender prioridades en ${s.work} con criterio y claridad.`,
+            consciousness: (s) => `Te ayudo a distinguir intuicion de temor en ${s.consciousness}.`,
+            relationships: (s) => `Te pido cuidar acuerdos y fronteras sanas en ${s.relationships}.`
           },
           {
             title: "Ocho",
-            message: (s) => `Ocho de ${s.name} expresa avance sostenido en ${s.journey}.`,
-            work: (s) => `Mantiene constancia y enfoque en ${s.work}.`,
-            consciousness: (s) => `Entrena disciplina interna en ${s.consciousness} sin autoexigencia extrema.`,
-            relationships: (s) => `Favorece coherencia cotidiana en ${s.relationships}.`
+            message: (s) => `Expreso un avance sostenido en ${s.journey}.`,
+            work: (s) => `Te pido mantener constancia y enfoque en ${s.work}.`,
+            consciousness: (s) => `Te ayudo a entrenar disciplina interna en ${s.consciousness} sin autoexigencia extrema.`,
+            relationships: (s) => `Favorezco coherencia cotidiana en ${s.relationships}.`
           },
           {
             title: "Nueve",
-            message: (s) => `Nueve de ${s.name} anuncia un cierre cercano en ${s.journey}.`,
-            work: (s) => `Revisa detalles finales en ${s.work} antes de concluir.`,
-            consciousness: (s) => `Observa fatiga o ansiedad en ${s.consciousness} y regula el ritmo.`,
-            relationships: (s) => `Aporta paciencia y madurez en ${s.relationships}.`
+            message: (s) => `Te anuncio un cierre cercano en ${s.journey}.`,
+            work: (s) => `Te invito a revisar detalles finales en ${s.work} antes de concluir.`,
+            consciousness: (s) => `Te muestro fatiga o ansiedad en ${s.consciousness}, donde puedes regular el ritmo.`,
+            relationships: (s) => `Aporto paciencia y madurez en ${s.relationships}.`
           },
           {
             title: "Diez",
-            message: (s) => `Diez de ${s.name} completa un ciclo de aprendizaje en ${s.journey}.`,
-            work: (s) => `Evalua logros y carga acumulada en ${s.work}.`,
-            consciousness: (s) => `Integra la leccion central en ${s.consciousness} para iniciar una nueva etapa.`,
-            relationships: (s) => `Cierra patrones en ${s.relationships} con responsabilidad afectiva.`
+            message: (s) => `Completo un ciclo de aprendizaje en ${s.journey}.`,
+            work: (s) => `Te invito a evaluar logros y carga acumulada en ${s.work}.`,
+            consciousness: (s) => `Te ayudo a integrar la leccion central en ${s.consciousness} para iniciar una nueva etapa.`,
+            relationships: (s) => `Cierro patrones en ${s.relationships} con responsabilidad afectiva.`
           },
           {
             title: "Sota",
-            message: (s) => `Sota de ${s.name} representa una etapa de exploracion en ${s.journey}.`,
-            work: (s) => `Aprende, pregunta y observa oportunidades en ${s.work}.`,
-            consciousness: (s) => `Cultiva curiosidad y apertura en ${s.consciousness}.`,
-            relationships: (s) => `Expresa emociones o ideas con honestidad en ${s.relationships}.`
+            message: (s) => `Represento una etapa de exploracion en ${s.journey}.`,
+            work: (s) => `Te invito a aprender, preguntar y observar oportunidades en ${s.work}.`,
+            consciousness: (s) => `Cultivo en ti curiosidad y apertura en ${s.consciousness}.`,
+            relationships: (s) => `Te impulso a expresar emociones o ideas con honestidad en ${s.relationships}.`
           },
           {
             title: "Caballo",
-            message: (s) => `Caballo de ${s.name} activa movimiento y decision en ${s.journey}.`,
-            work: (s) => `Canaliza impulso en ${s.work} con un plan claro.`,
-            consciousness: (s) => `Reconoce la fuerza movilizadora en ${s.consciousness} y orientala.`,
-            relationships: (s) => `Evita reaccionar de forma impulsiva en ${s.relationships}.`
+            message: (s) => `Activo movimiento y decision en ${s.journey}.`,
+            work: (s) => `Te ayudo a canalizar el impulso en ${s.work} con un plan claro.`,
+            consciousness: (s) => `Te muestro tu fuerza movilizadora en ${s.consciousness} y te invito a orientarla.`,
+            relationships: (s) => `Te pido evitar reaccionar de forma impulsiva en ${s.relationships}.`
           },
           {
             title: "Reina",
-            message: (s) => `Reina de ${s.name} muestra madurez receptiva en ${s.journey}.`,
-            work: (s) => `Lidera desde la inteligencia emocional y practica en ${s.work}.`,
-            consciousness: (s) => `Integra intuicion y criterio en ${s.consciousness}.`,
-            relationships: (s) => `Ofrece contencion y limites claros en ${s.relationships}.`
+            message: (s) => `Te muestro una madurez receptiva en ${s.journey}.`,
+            work: (s) => `Te invito a liderar desde la inteligencia emocional y practica en ${s.work}.`,
+            consciousness: (s) => `Integro en ti intuicion y criterio en ${s.consciousness}.`,
+            relationships: (s) => `Te ofrezco contencion y limites claros en ${s.relationships}.`
           },
           {
             title: "Rey",
-            message: (s) => `Rey de ${s.name} simboliza maestria responsable en ${s.journey}.`,
-            work: (s) => `Toma decisiones firmes y eticas en ${s.work}.`,
-            consciousness: (s) => `Consolida autoridad interna en ${s.consciousness}.`,
-            relationships: (s) => `Sostiene compromiso y direccion en ${s.relationships}.`
+            message: (s) => `Simbolizo maestria responsable en ${s.journey}.`,
+            work: (s) => `Te pido tomar decisiones firmes y eticas en ${s.work}.`,
+            consciousness: (s) => `Consolido tu autoridad interna en ${s.consciousness}.`,
+            relationships: (s) => `Sostengo compromiso y direccion en ${s.relationships}.`
           }
         ];
         for (const s of suits) {
@@ -649,136 +713,136 @@
       const CARD_INSIGHT_BLURBS = Object.assign(
         {
           m00: formatBanzhafReading({
-            message: "El Loco representa el llamado a iniciar el Viaje del Heroe con apertura y confianza consciente.",
-            work: "Invita a explorar caminos nuevos sin improvisar: toma riesgos medidos y aprende en la practica.",
-            consciousness: "Muestra una mente dispuesta a desaprender y a confiar en la experiencia directa.",
-            relationships: "Propone vincularte desde autenticidad, sin perder discernimiento ni limites."
+            message: "Soy el llamado a iniciar el Viaje del Heroe con apertura y confianza consciente.",
+            work: "Te invito a explorar caminos nuevos sin improvisar y a tomar riesgos medidos para aprender en la practica.",
+            consciousness: "Te muestro una mente dispuesta a desaprender y a confiar en la experiencia directa.",
+            relationships: "Te propongo vincularte desde tu autenticidad, sin perder discernimiento ni limites."
           }),
           m01: formatBanzhafReading({
-            message: "El Mago expresa la capacidad de convertir potencial en accion alineada.",
-            work: "Es momento de usar recursos concretos, enfocar energia y ejecutar con claridad.",
-            consciousness: "Revela poder personal cuando pensamiento, voluntad y palabra actuan en coherencia.",
-            relationships: "Favorece comunicacion clara y presencia consciente en los vinculos."
+            message: "Soy la capacidad de convertir tu potencial en accion alineada.",
+            work: "Te muestro como usar recursos concretos, enfocar energia y ejecutar con claridad.",
+            consciousness: "Te revelo tu poder personal cuando pensamiento, voluntad y palabra actuan en coherencia.",
+            relationships: "Te invito a una comunicacion clara y a la presencia consciente en tus vinculos."
           }),
           m02: formatBanzhafReading({
-            message: "La Sacerdotisa senala una etapa de escucha interna y conocimiento simbolico.",
-            work: "Sugiere observar antes de actuar, leyendo lo que aun no es evidente.",
-            consciousness: "Invita a profundizar en intuicion, suenos y contenidos del inconsciente.",
-            relationships: "Pide respeto por los tiempos emocionales y por lo no dicho en la relacion."
+            message: "Soy una etapa de escucha interna y conocimiento simbolico.",
+            work: "Te sugiero observar antes de actuar, leyendo lo que aun no es evidente.",
+            consciousness: "Te invito a profundizar en tu intuicion, suenos y contenidos del inconsciente.",
+            relationships: "Te pido respeto por los tiempos emocionales y por lo no dicho en la relacion."
           }),
           m03: formatBanzhafReading({
-            message: "La Emperatriz encarna la fertilidad creativa y el cuidado que hace crecer.",
-            work: "Potencia proyectos cuando nutres procesos y colaboraciones de forma sostenida.",
-            consciousness: "Conecta con placer, cuerpo y autoestima como base de abundancia interna.",
-            relationships: "Promueve afecto, receptividad y expresion amorosa saludable."
+            message: "Soy la fertilidad creativa y el cuidado que hace crecer.",
+            work: "Potencio tus proyectos cuando nutres procesos y colaboraciones de forma sostenida.",
+            consciousness: "Te conecto con placer, cuerpo y autoestima como base de tu abundancia interna.",
+            relationships: "Promuevo en ti afecto, receptividad y expresion amorosa saludable."
           }),
           m04: formatBanzhafReading({
-            message: "El Emperador marca el paso de ordenar la energia para construir estructura.",
-            work: "Beneficia liderazgo, planificacion y limites claros en objetivos profesionales.",
-            consciousness: "Invita a fortalecer disciplina sin caer en rigidez defensiva.",
-            relationships: "Solicita compromiso, contencion y acuerdos firmes con respeto mutuo."
+            message: "Soy el paso de ordenar la energia para construir estructura.",
+            work: "Beneficio tu liderazgo, planificacion y limites claros en objetivos profesionales.",
+            consciousness: "Te invito a fortalecer la disciplina sin caer en rigidez defensiva.",
+            relationships: "Te pido compromiso, contencion y acuerdos firmes con respeto mutuo."
           }),
           m05: formatBanzhafReading({
-            message: "El Hierofante representa aprendizaje dentro de una tradicion con sentido etico.",
-            work: "Favorece mentorias, estudio y marcos institucionales bien utilizados.",
-            consciousness: "Cuestiona que creencias sostienen tu crecimiento y cuales necesitan revision.",
-            relationships: "Sugiere construir vinculos desde valores compartidos y responsabilidad."
+            message: "Soy el aprendizaje dentro de una tradicion con sentido etico.",
+            work: "Favorezco mentorias, estudio y marcos institucionales bien utilizados.",
+            consciousness: "Te cuestiono que creencias sostienen tu crecimiento y cuales necesitan revision.",
+            relationships: "Te sugiero construir vinculos desde valores compartidos y responsabilidad."
           }),
           m06: formatBanzhafReading({
-            message: "Los Enamorados muestran una decision madura entre deseo, valor y coherencia.",
-            work: "Plantea elegir proyectos alineados con tus principios, no solo con la urgencia.",
-            consciousness: "Revela integracion de polaridades internas para decidir con presencia.",
-            relationships: "Invita a elecciones afectivas conscientes, dialogadas y reciprocas."
+            message: "Soy una decision madura entre deseo, valor y coherencia.",
+            work: "Te planteo elegir proyectos alineados con tus principios, no solo con la urgencia.",
+            consciousness: "Te revelo la integracion de polaridades internas para decidir con presencia.",
+            relationships: "Te invito a elecciones afectivas conscientes, dialogadas y reciprocas."
           }),
           m07: formatBanzhafReading({
-            message: "El Carro simboliza avance cuando la voluntad integra fuerzas opuestas.",
-            work: "Impulsa progreso si hay direccion definida y constancia diaria.",
-            consciousness: "Pide autocontrol consciente: conducir la energia sin reprimirla.",
-            relationships: "Propone equilibrio entre autonomia personal y compromiso vincular."
+            message: "Simbolizo el avance cuando tu voluntad integra fuerzas opuestas.",
+            work: "Impulso tu progreso si hay direccion definida y constancia diaria.",
+            consciousness: "Te pido un autocontrol consciente que conduzca la energia sin reprimirla.",
+            relationships: "Te propongo equilibrio entre autonomia personal y compromiso vincular."
           }),
           m08: formatBanzhafReading({
-            message: "La Fuerza representa dominio interno a traves de calma y compasion.",
-            work: "Ayuda a sostener retos con paciencia, firmeza y trato respetuoso.",
-            consciousness: "Muestra integracion de instinto y conciencia sin violencia interna.",
-            relationships: "Favorece ternura firme, escucha y regulacion emocional compartida."
+            message: "Represento el dominio interno a traves de calma y compasion.",
+            work: "Te ayudo a sostener retos con paciencia, firmeza y trato respetuoso.",
+            consciousness: "Te muestro la integracion de instinto y conciencia sin violencia interna.",
+            relationships: "Favorezco ternura firme, escucha y regulacion emocional compartida."
           }),
           m09: formatBanzhafReading({
-            message: "El Ermitano describe una fase de retiro fecundo para encontrar sentido.",
-            work: "Recomienda revisar rumbo profesional con criterio y profundidad.",
-            consciousness: "Invita a la introspeccion y a escuchar la voz interior sabia.",
-            relationships: "Pide espacios de silencio saludable para relacionarte con mayor verdad."
+            message: "Describo una fase de retiro fecundo para encontrar sentido.",
+            work: "Te recomiendo revisar tu rumbo profesional con criterio y profundidad.",
+            consciousness: "Te invito a la introspeccion y a escuchar tu voz interior sabia.",
+            relationships: "Te pido espacios de silencio saludable para relacionarte con mayor verdad."
           }),
           m10: formatBanzhafReading({
-            message: "La Rueda de la Fortuna recuerda que la vida se mueve por ciclos.",
-            work: "Sugiere adaptarte al cambio y aprovechar ventanas de oportunidad.",
-            consciousness: "Muestra que repetir patrones puede convertirse en aprendizaje consciente.",
-            relationships: "Invita a flexibilizar expectativas y acompanar los procesos compartidos."
+            message: "Te recuerdo que la vida se mueve por ciclos.",
+            work: "Te sugiero adaptarte al cambio y aprovechar ventanas de oportunidad.",
+            consciousness: "Te muestro que repetir patrones puede convertirse en aprendizaje consciente.",
+            relationships: "Te invito a flexibilizar expectativas y acompanar los procesos compartidos."
           }),
           m11: formatBanzhafReading({
-            message: "La Justicia representa equilibrio, consecuencia y verdad integradora.",
-            work: "Pide decisiones objetivas, contratos claros y responsabilidad en actos.",
-            consciousness: "Invita a observar sesgos y alinear pensamiento con etica personal.",
-            relationships: "Solicita reciprocidad, limites justos y comunicacion honesta."
+            message: "Represento equilibrio, consecuencia y verdad integradora.",
+            work: "Te pido decisiones objetivas, contratos claros y responsabilidad en tus actos.",
+            consciousness: "Te invito a observar sesgos y alinear tu pensamiento con tu etica personal.",
+            relationships: "Te pido reciprocidad, limites justos y comunicacion honesta."
           }),
           m12: formatBanzhafReading({
-            message: "El Colgado muestra que detenerse puede abrir una nueva perspectiva.",
-            work: "Sugiere pausar para redefinir estrategia en lugar de forzar resultados.",
-            consciousness: "Revela aprendizaje al soltar control y mirar desde otro angulo.",
-            relationships: "Pide paciencia y empatia ante tiempos emocionales distintos."
+            message: "Te muestro que detenerte puede abrir una nueva perspectiva.",
+            work: "Te sugiero pausar para redefinir estrategia en lugar de forzar resultados.",
+            consciousness: "Te revelo aprendizaje al soltar el control y mirar desde otro angulo.",
+            relationships: "Te pido paciencia y empatia ante tiempos emocionales distintos."
           }),
           m13: formatBanzhafReading({
-            message: "La Muerte simboliza transformacion profunda y cierre de una etapa.",
-            work: "Indica dejar estructuras agotadas para habilitar una forma mas autentica de trabajo.",
-            consciousness: "Invita a elaborar duelo y renacer con identidad mas integra.",
-            relationships: "Marca fin de dinamicas caducas y apertura a vinculos mas conscientes."
+            message: "Simbolizo una transformacion profunda y el cierre de una etapa.",
+            work: "Te indico dejar estructuras agotadas para habilitar una forma mas autentica de trabajo.",
+            consciousness: "Te invito a elaborar el duelo y renacer con una identidad mas integra.",
+            relationships: "Marco el fin de dinamicas caducas y la apertura a vinculos mas conscientes."
           }),
           m14: formatBanzhafReading({
-            message: "La Templanza expresa integracion de opuestos y armonia activa.",
-            work: "Favorece procesos graduales, cooperacion y mejora continua.",
-            consciousness: "Propone autorregulacion emocional y claridad serena.",
-            relationships: "Invita a construir puentes, acuerdos y confianza progresiva."
+            message: "Expreso la integracion de opuestos y una armonia activa.",
+            work: "Favorezco procesos graduales, cooperacion y mejora continua.",
+            consciousness: "Te propongo autorregulacion emocional y claridad serena.",
+            relationships: "Te invito a construir puentes, acuerdos y confianza progresiva."
           }),
           m15: formatBanzhafReading({
-            message: "El Diablo confronta apegos, automatismos y zonas de sombra.",
-            work: "Pide revisar dependencias, ambicion desordenada o pactos poco saludables.",
-            consciousness: "Revela condicionamientos inconscientes que pueden transformarse al reconocerlos.",
-            relationships: "Invita a diferenciar deseo consciente de vinculos basados en control o miedo."
+            message: "Te confronto con apegos, automatismos y zonas de sombra.",
+            work: "Te pido revisar dependencias, ambicion desordenada o pactos poco saludables.",
+            consciousness: "Te revelo condicionamientos inconscientes que pueden transformarse al reconocerlos.",
+            relationships: "Te invito a diferenciar tu deseo consciente de vinculos basados en control o miedo."
           }),
           m16: formatBanzhafReading({
-            message: "La Torre representa una ruptura necesaria de estructuras falsas.",
-            work: "Puede traer cambios bruscos que liberan de modelos improductivos.",
-            consciousness: "Muestra una verdad que derriba defensas y habilita autenticidad.",
-            relationships: "Impulsa conversaciones honestas para reconstruir sobre bases reales."
+            message: "Represento una ruptura necesaria de estructuras falsas.",
+            work: "Puedo traerte cambios bruscos que te liberan de modelos improductivos.",
+            consciousness: "Te muestro una verdad que derriba defensas y habilita tu autenticidad.",
+            relationships: "Impulso conversaciones honestas para reconstruir sobre bases reales."
           }),
           m17: formatBanzhafReading({
-            message: "La Estrella anuncia una etapa de reparacion, confianza y sentido.",
-            work: "Favorece vision inspirada con pasos concretos y sostenibles.",
-            consciousness: "Conecta con esperanza madura y alineacion interior.",
-            relationships: "Promueve ternura, apertura y cuidado mutuo sin idealizacion."
+            message: "Te anuncio una etapa de reparacion, confianza y sentido.",
+            work: "Favorezco una vision inspirada con pasos concretos y sostenibles.",
+            consciousness: "Te conecto con esperanza madura y alineacion interior.",
+            relationships: "Promuevo ternura, apertura y cuidado mutuo sin idealizacion."
           }),
           m18: formatBanzhafReading({
-            message: "La Luna muestra un pasaje por lo ambiguo y lo simbolico.",
-            work: "Pide verificar informacion y evitar decisiones precipitadas por confusion.",
-            consciousness: "Revela miedos, proyecciones y material inconsciente para integrar.",
-            relationships: "Invita a aclarar malentendidos con sensibilidad y limites claros."
+            message: "Te muestro un pasaje por lo ambiguo y lo simbolico.",
+            work: "Te pido verificar informacion y evitar decisiones precipitadas por confusion.",
+            consciousness: "Te revelo miedos, proyecciones y material inconsciente para integrar.",
+            relationships: "Te invito a aclarar malentendidos con sensibilidad y limites claros."
           }),
           m19: formatBanzhafReading({
-            message: "El Sol expresa conciencia expandida, vitalidad y claridad.",
-            work: "Potencia logros cuando compartes con transparencia y generosidad.",
-            consciousness: "Muestra integracion de sombra y luz en una identidad mas confiada.",
-            relationships: "Favorece alegria, sinceridad y expresion afectiva abierta."
+            message: "Expreso conciencia expandida, vitalidad y claridad.",
+            work: "Potencio tus logros cuando compartes con transparencia y generosidad.",
+            consciousness: "Te muestro la integracion de sombra y luz en una identidad mas confiada.",
+            relationships: "Favorezco alegria, sinceridad y expresion afectiva abierta."
           }),
           m20: formatBanzhafReading({
-            message: "El Juicio representa un llamado a despertar y resignificar la historia personal.",
-            work: "Invita a evaluar trayectoria, cerrar pendientes y actuar con proposito renovado.",
-            consciousness: "Facilita perdon, responsabilidad y renacimiento del sentido.",
-            relationships: "Promueve reconciliaciones conscientes y decisiones vinculares maduras."
+            message: "Soy un llamado a despertar y resignificar tu historia personal.",
+            work: "Te invito a evaluar trayectoria, cerrar pendientes y actuar con proposito renovado.",
+            consciousness: "Te facilito el perdon, la responsabilidad y el renacimiento del sentido.",
+            relationships: "Promuevo reconciliaciones conscientes y decisiones vinculares maduras."
           }),
           m21: formatBanzhafReading({
-            message: "El Mundo simboliza culminacion del Viaje del Heroe e integracion de aprendizajes.",
-            work: "Indica cierre exitoso de ciclos y expansion hacia nuevas metas.",
-            consciousness: "Muestra plenitud interna al unir experiencia, cuerpo y proposito.",
-            relationships: "Invita a compartir desde completitud, reciprocidad y vision de futuro."
+            message: "Simbolizo la culminacion del Viaje del Heroe y la integracion de tus aprendizajes.",
+            work: "Te indico cierre exitoso de ciclos y expansion hacia nuevas metas.",
+            consciousness: "Te muestro plenitud interna al unir experiencia, cuerpo y proposito.",
+            relationships: "Te invito a compartir desde la completitud, la reciprocidad y la vision de futuro."
           })
         },
         buildMinorArcanaInsightBlurbs()
