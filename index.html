@@ -467,9 +467,11 @@
 
       function formatBanzhafReading(parts) {
         const reflection = normalizeSentence(
-          `${parts.message} ${parts.consciousness}`
+          `Ahora estás viviendo una etapa de maduración interna. ${parts.message} ${parts.consciousness}`
         );
-        const advice = normalizeSentence(`${parts.work} ${parts.relationships}`);
+        const advice = normalizeSentence(
+          `Para integrar esta energía en tu vida, toma este consejo práctico: ${parts.work} ${parts.relationships}`
+        );
         return [reflection, `Consejo: ${advice}`].filter(Boolean).join(" ");
       }
 
