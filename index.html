@@ -467,13 +467,10 @@
 
       function formatBanzhafReading(parts) {
         const reflection = normalizeSentence(
-          `En esta etapa del Viaje del Heroe se activa un proceso interno de maduracion personal: ${parts.message} ${parts.consciousness}`
+          `${parts.message} ${parts.consciousness}`
         );
         const advice = normalizeSentence(`${parts.work} ${parts.relationships}`);
-        const action = normalizeSentence(
-          "Accion concreta: define hoy una decision pendiente, escribe tres limites o prioridades claras y completa en las proximas 24 horas una accion breve de 15 minutos que la respalde."
-        );
-        return [reflection, `Consejo: ${advice}`, action].filter(Boolean).join(" ");
+        return [reflection, `Consejo: ${advice}`].filter(Boolean).join(" ");
       }
 
       function buildMinorArcanaInsightBlurbs() {
