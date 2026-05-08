@@ -438,13 +438,42 @@
         return words.slice(0, maxWords).join(" ");
       }
 
+      function removeCardIdentityTerms(text) {
+        if (!text) return "";
+        let cleaned = String(text);
+        const escapedMajors = MAJOR_ARCANA.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        if (escapedMajors.length > 0) {
+          cleaned = cleaned.replace(new RegExp(`\\b(?:${escapedMajors.join("|")})\\b`, "gi"), "");
+        }
+        cleaned = cleaned
+          .replace(
+            /\b(?:As|Dos|Tres|Cuatro|Cinco|Seis|Siete|Ocho|Nueve|Diez|Sota|Caballo|Reina|Rey)\s+de\s+(?:Bastos|Copas|Espadas|Oros)\b/gi,
+            ""
+          )
+          .replace(/\b(?:As|Dos|Tres|Cuatro|Cinco|Seis|Siete|Ocho|Nueve|Diez|Sota|Caballo|Reina|Rey)\b/gi, "")
+          .replace(/\s+/g, " ")
+          .replace(/\s+([,.;:!?])/g, "$1")
+          .trim();
+        return cleaned;
+      }
+
+      function normalizeSentence(text) {
+        const clean = removeCardIdentityTerms(text)
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!clean) return "";
+        return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+      }
+
       function formatBanzhafReading(parts) {
-        return [
-          shortWords(parts.message, 9),
-          `Trabajo: ${shortWords(parts.work, 6)}.`,
-          `Conciencia: ${shortWords(parts.consciousness, 6)}.`,
-          `Amor: ${shortWords(parts.relationships, 6)}.`
-        ].join(" ");
+        const reflection = normalizeSentence(
+          `En esta etapa del Viaje del Heroe se activa un proceso interno de maduracion personal: ${parts.message} ${parts.consciousness}`
+        );
+        const advice = normalizeSentence(`${parts.work} ${parts.relationships}`);
+        const action = normalizeSentence(
+          "Accion concreta: define hoy una decision pendiente, escribe tres limites o prioridades claras y completa en las proximas 24 horas una accion breve de 15 minutos que la respalde."
+        );
+        return [reflection, `Consejo: ${advice}`, action].filter(Boolean).join(" ");
       }
 
       function buildMinorArcanaInsightBlurbs() {
