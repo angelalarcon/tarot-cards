@@ -586,12 +586,8 @@
         const reflection = normalizeSentence(
           `${message}. En tu interior, ${lowerFirst(consciousness)}.`
         );
-        const advice = normalizeSentence(
-          `en tu trabajo, ${lowerFirst(work)}; en tus vinculos, ${lowerFirst(
-            relationships
-          )}.`
-        );
-        return [reflection, `Mi consejo es llevarlo a lo concreto: ${advice}`].filter(Boolean).join(" ");
+        const advice = normalizeSentence(`${work} ${relationships}`);
+        return [reflection, `Consejo: ${advice}`].filter(Boolean).join(" ");
       }
 
       function buildMinorArcanaInsightBlurbs() {
