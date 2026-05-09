@@ -1373,6 +1373,10 @@
         return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 768px)").matches;
       }
 
+      function viewportIsDesktopLarge() {
+        return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1280px)").matches;
+      }
+
       /** Reparto / flip: tiempos compartidos para sensación fluida (paso 3). */
       const CARD_ANIM = {
         staggerMs: 115,
@@ -1401,11 +1405,17 @@
       }
 
       function tableCardLayout() {
-        const cardSize = {
-          tileW: 140,
-          overlapPx: 58,
-          rowMarginTop: -20,
-        };
+        const cardSize = viewportIsDesktopLarge()
+          ? {
+              tileW: 280,
+              overlapPx: 116,
+              rowMarginTop: -40,
+            }
+          : {
+              tileW: 140,
+              overlapPx: 58,
+              rowMarginTop: -20,
+            };
         if (viewportIsMdUp()) {
           return {
             ...cardSize,
