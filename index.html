@@ -52,6 +52,46 @@
       .startup-loader-icon {
         animation: loaderPulse 1.1s ease-in-out infinite;
       }
+      /* Titulo estilo carta RWS (franja inferior ~1/6) para arcanos menores sin nombre en el arte */
+      .card-face-print-root {
+        container-type: size;
+        container-name: cardface;
+      }
+      .card-printed-title-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        height: 16.666667%;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2px 4px 8px;
+        pointer-events: none;
+        overflow: hidden;
+        background-image:
+          radial-gradient(ellipse 130% 90% at 50% 35%, rgba(255, 255, 255, 0.28) 0%, transparent 52%),
+          radial-gradient(circle at 20% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 45%),
+          linear-gradient(180deg, rgba(120, 70, 90, 0.07) 0%, transparent 42%);
+        color: #3a3648;
+        font-family: ui-serif, Georgia, "Times New Roman", "DejaVu Serif", Times, serif;
+        font-weight: 500;
+        letter-spacing: -0.5px;
+        line-height: 1;
+        text-transform: uppercase;
+        /* Base mas alta (~2x respecto a la version anterior); el span refina ancho/alto */
+        font-size: clamp(0.55rem, 6.4cqh, 1.2rem);
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card-printed-title-bar__text {
+        display: inline-block;
+        white-space: nowrap;
+        transform-origin: center center;
+      }
     </style>
   </head>
   <body class="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)] text-slate-100">
@@ -371,6 +411,7 @@
         "c06",
         "c07",
         "c08",
+        "c09",
         "c10",
         "s02",
         "s03",
@@ -394,6 +435,109 @@
       function cardFaceImageScaleClass(cardId) {
         return CARD_FACE_SCALE_127_IDS.has(cardId) ? " scale-[1.27]" : "";
       }
+      const MINOR_RANK_NUMBER_ENGLISH = {
+        "02": "Two",
+        "03": "Three",
+        "04": "Four",
+        "05": "Five",
+        "06": "Six",
+        "07": "Seven",
+        "08": "Eight",
+        "09": "Nine",
+        "10": "Ten"
+      };
+      const MINOR_RANK_FACE_TITLE_COURT_ENGLISH = {
+        "01": "Ace",
+        "11": "Page",
+        "12": "Knight",
+        "13": "Queen",
+        "14": "King"
+      };
+      const CARD_PRINTED_TITLE_EXTRA_IDS = new Set([
+        "w01",
+        "w11",
+        "w12",
+        "w13",
+        "w14",
+        "c01",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "s01",
+        "s11",
+        "s12",
+        "s13",
+        "s14",
+        "p01",
+        "p11",
+        "p12",
+        "p13",
+        "p14"
+      ]);
+      const MINOR_SUIT_ENGLISH_PRINT_TITLE = {
+        w: "Wands",
+        c: "Cups",
+        s: "Swords",
+        p: "Pentacles"
+      };
+      function cardPrintedEnglishTitleUpper(cardId) {
+        const suit = cardId.charAt(0);
+        const rank = cardId.slice(1);
+        const suitWord = MINOR_SUIT_ENGLISH_PRINT_TITLE[suit];
+        if (!suitWord) return "";
+        if (CARD_FACE_SCALE_127_IDS.has(cardId)) {
+          const rankWord = MINOR_RANK_NUMBER_ENGLISH[rank];
+          if (!rankWord) return "";
+          return `${rankWord} OF ${suitWord}`;
+        }
+        if (CARD_PRINTED_TITLE_EXTRA_IDS.has(cardId)) {
+          const rankWord = MINOR_RANK_FACE_TITLE_COURT_ENGLISH[rank];
+          if (!rankWord) return "";
+          return `${rankWord} OF ${suitWord}`;
+        }
+        return "";
+      }
+
+      let fitPrintedTitleBarsTimer = 0;
+      function fitCardPrintedTitleBar(barEl) {
+        if (!barEl || !(barEl instanceof HTMLElement)) return;
+        const text = barEl.querySelector(".card-printed-title-bar__text");
+        if (!(text instanceof HTMLElement)) return;
+        const padPx = 10;
+        const measureAndApply = () => {
+          text.style.removeProperty("transform");
+          const bw = barEl.clientWidth - padPx;
+          const tw = text.scrollWidth;
+          const condensedX = 0.78;
+          const stretchY = 1.19;
+          if (tw <= 0 || bw <= 0) {
+            text.style.transform = `scale(${condensedX}, ${stretchY})`;
+            return;
+          }
+          const sx = Math.min(condensedX, (bw / tw) * 0.995);
+          text.style.transform = `scale(${sx.toFixed(5)}, ${stretchY})`;
+        };
+        requestAnimationFrame(() => {
+          measureAndApply();
+          requestAnimationFrame(measureAndApply);
+        });
+      }
+
+      function fitAllCardPrintedTitleBars() {
+        for (const bar of document.querySelectorAll(".card-printed-title-bar")) {
+          fitCardPrintedTitleBar(bar);
+        }
+      }
+
+      function scheduleFitAllCardPrintedTitleBars() {
+        window.clearTimeout(fitPrintedTitleBarsTimer);
+        fitPrintedTitleBarsTimer = window.setTimeout(() => {
+          fitPrintedTitleBarsTimer = 0;
+          fitAllCardPrintedTitleBars();
+        }, 100);
+      }
+
       const MAJOR_ANIMATED_FILENAMES = [
         "0-The-Fool.gif",
         "I-The-Magician.gif",
@@ -424,14 +568,6 @@
         s: "Swords",
         p: "Coins"
       };
-      const MINOR_RANK_ANIMATED_NAME = {
-        "01": "Ace",
-        "11": "Page",
-        "12": "Knight",
-        "13": "Queen",
-        "14": "King"
-      };
-
       const step1 = document.getElementById("step1");
       const step2 = document.getElementById("step2");
       const step3 = document.getElementById("step3");
@@ -491,7 +627,7 @@
           const cupsSuffix = cupsNeedsVariant2 ? "2" : "";
           return `${ANIMATED_IMAGE_BASE_URL}/${numeric}-${suitName.toLowerCase()}${cupsSuffix}.gif`;
         }
-        const rankName = MINOR_RANK_ANIMATED_NAME[rankCode];
+        const rankName = MINOR_RANK_FACE_TITLE_COURT_ENGLISH[rankCode];
         if (!rankName) return "";
         return `${ANIMATED_IMAGE_BASE_URL}/${rankName}-of-${suitName}.gif`;
       }
@@ -1285,6 +1421,19 @@
           "absolute inset-0 block h-full w-full object-cover object-center" + cardFaceImageScaleClass(card.id);
         img.loading = "lazy";
         frame.appendChild(img);
+        const printedTitle = cardPrintedEnglishTitleUpper(card.id);
+        if (printedTitle) {
+          frame.classList.add("card-face-print-root");
+          const titleBar = document.createElement("div");
+          titleBar.className = "card-printed-title-bar";
+          titleBar.setAttribute("aria-hidden", "true");
+          const titleSpan = document.createElement("span");
+          titleSpan.className = "card-printed-title-bar__text";
+          titleSpan.textContent = printedTitle;
+          titleBar.appendChild(titleSpan);
+          frame.appendChild(titleBar);
+          fitCardPrintedTitleBar(titleBar);
+        }
         label.appendChild(input);
         label.appendChild(frame);
         attachCardTooltipBehavior(label, card);
@@ -1316,6 +1465,7 @@
         if (!step1.classList.contains("hidden")) {
           renderStep1Background();
         }
+        scheduleFitAllCardPrintedTitleBars();
       });
 
       document.addEventListener("click", (event) => {
@@ -1731,14 +1881,22 @@
           if (instant) {
             innerFlip.classList.add("[transform:rotateY(180deg)]");
           }
+          const printedTitle = cardPrintedEnglishTitleUpper(card.id);
+          const facePrintRootClass = printedTitle ? " card-face-print-root" : "";
+          const printedTitleHtml = printedTitle
+            ? `<div class="card-printed-title-bar" aria-hidden="true"><span class="card-printed-title-bar__text">${escapeHtml(
+                printedTitle
+              )}</span></div>`
+            : "";
           innerFlip.innerHTML = `
             <div class="absolute inset-0 box-border overflow-hidden rounded-none border-2 border-violet-200/95 bg-neutral-950 [backface-visibility:hidden]">
               <img src="${TAROT_CARD_BACK_SRC}" alt="" class="block h-full w-full object-cover object-center" decoding="async" loading="lazy" />
             </div>
-            <div class="absolute inset-0 overflow-hidden rounded-none bg-neutral-950 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <div class="absolute inset-0 overflow-hidden rounded-none bg-neutral-950 [backface-visibility:hidden] [transform:rotateY(180deg)]${facePrintRootClass}">
               <img src="${card.staticImg || card.img}" alt="" class="card-face-media block h-full w-full object-contain object-center bg-neutral-950${cardFaceImageScaleClass(
                 card.id
               )}" decoding="async" loading="lazy" />
+              ${printedTitleHtml}
             </div>
           `;
           wrap.appendChild(innerFlip);
@@ -1747,6 +1905,10 @@
           const faceImg = wrap.querySelector(".card-face-media");
           attachCardAnimatedPreviewBehavior(wrap, faceImg, card);
           mahjongStrip.appendChild(wrap);
+          if (printedTitle) {
+            const titleBarEl = wrap.querySelector(".card-printed-title-bar");
+            if (titleBarEl) fitCardPrintedTitleBar(titleBarEl);
+          }
         });
 
         if (!instant && pendingDeckDeal.length > 0) {
