@@ -637,6 +637,39 @@
         return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       }
 
+      const MANUAL_SEARCH_MINOR_RANK_EXTRAS = {
+        1: "as uno 1",
+        2: "dos 2",
+        3: "tres 3",
+        4: "cuatro 4",
+        5: "cinco 5",
+        6: "seis 6",
+        7: "siete 7",
+        8: "ocho 8",
+        9: "nueve 9",
+        10: "diez 10"
+      };
+
+      function manualMinorPipsRankFromId(cardId) {
+        if (!cardId || !/^[wcsp]/.test(cardId)) return null;
+        const n = Number(cardId.slice(1));
+        if (Number.isNaN(n) || n < 1 || n > 10) return null;
+        return n;
+      }
+
+      function manualCardSearchHaystack(card) {
+        const base = card.name.toLowerCase();
+        const r = manualMinorPipsRankFromId(card.id);
+        const extras = r != null ? MANUAL_SEARCH_MINOR_RANK_EXTRAS[r] : "";
+        return extras ? `${base} ${extras}` : base;
+      }
+
+      function manualSearchMatches(card, qRaw) {
+        const q = String(qRaw || "").trim().toLowerCase();
+        if (!q) return true;
+        return manualCardSearchHaystack(card).includes(q);
+      }
+
       function ourCardIdToApiShort(cardId) {
         if (!cardId) return null;
         if (cardId.startsWith("m")) return `ar${cardId.slice(1)}`;
@@ -1670,7 +1703,7 @@
           active.blur();
         }
         const q = manualSearchInput.value.trim().toLowerCase();
-        const filtered = remainingDeck.filter((card) => card.name.toLowerCase().includes(q));
+        const filtered = remainingDeck.filter((card) => manualSearchMatches(card, q));
         manualCardList.innerHTML = "";
 
         if (filtered.length === 0) {
@@ -1695,7 +1728,7 @@
           active.blur();
         }
         const q = manualPickSearchInput.value.trim().toLowerCase();
-        const filtered = remainingDeck.filter((card) => card.name.toLowerCase().includes(q));
+        const filtered = remainingDeck.filter((card) => manualSearchMatches(card, q));
         manualPickModalGrid.innerHTML = "";
         refreshManualPickSelectionLabel();
 
@@ -2044,6 +2077,10 @@
         modalOpenRequested = false;
         updateRemainingText();
         renderDeckPile();
+        if (currentMode === "manual") {
+          renderManualList({ resetListScroll: true });
+          setManualHelper();
+        }
         persistDeckMode();
         persistSession();
       }
