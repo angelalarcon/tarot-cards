@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tarot - Flujo por Pantallas</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2072%22%3E%3Crect%20x%3D%2211%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2260%22%20rx%3D%225%22%20fill%3D%22%232e1065%22%2F%3E%3C%2Fsvg%3E"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.birds.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -46,10 +53,10 @@
     <div
       id="step1Bg"
       aria-hidden="true"
-      class="pointer-events-none fixed inset-0 z-0 hidden overflow-hidden opacity-10"
+      class="pointer-events-none fixed inset-0 z-0 hidden min-h-[100dvh] min-w-[200px] overflow-hidden opacity-10"
     ></div>
     <main class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
-      <section id="step1">
+      <section id="step1" class="opacity-100 transition-opacity duration-300 ease-out">
         <h1 class="text-center text-3xl font-bold tracking-tight">Tarot Digital</h1>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <button
@@ -73,7 +80,7 @@
         </div>
       </section>
 
-      <section id="step2" class="hidden">
+      <section id="step2" class="hidden opacity-100 transition-opacity duration-300 ease-out">
         <div
           id="randomDrawCountBlock"
           class="flex flex-col items-center p-4 text-center"
@@ -160,7 +167,10 @@
         </div>
       </section>
 
-      <section id="step3" class="fixed inset-0 z-40 hidden bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)]">
+      <section
+        id="step3"
+        class="fixed inset-0 z-40 hidden bg-[radial-gradient(circle_at_top,_#2e1065_0%,_#0f172a_48%,_#020617_100%)] opacity-100 transition-opacity duration-300 ease-out"
+      >
         <div class="absolute right-4 top-4 z-20 flex items-center gap-2 pr-3">
           <button
             id="resetSessionBtn"
@@ -1461,8 +1471,9 @@
         if (activeCardTooltipWrap && tip && tip.style.opacity === "1") {
           positionCardTooltip(activeCardTooltipWrap, tip);
         }
-        if (!step1.classList.contains("hidden")) {
-          renderStep1Background();
+        const step1BgEl = document.getElementById("step1Bg");
+        if (step1BgEl && !step1BgEl.classList.contains("hidden")) {
+          resizeStep1Vanta();
         }
         scheduleFitAllCardPrintedTitleBars();
       });
@@ -1485,57 +1496,128 @@
         activeFrontCardWrap = null;
       });
 
-      function setStep(stepNumber) {
-        step1.classList.toggle("hidden", stepNumber !== 1);
-        step2.classList.toggle("hidden", stepNumber !== 2);
-        step3.classList.toggle("hidden", stepNumber !== 3);
+      const STEP_FADE_MS = 300;
+      let uiStep = null;
+      let stepTransitionBusy = false;
+
+      function resetSectionOpacity(el) {
+        if (!el) return;
+        el.classList.remove("opacity-0");
+        el.classList.add("opacity-100");
+      }
+
+      function syncVantaForStep(stepNumber) {
         const bg = document.getElementById("step1Bg");
-        if (bg) {
-          const showBg = stepNumber === 1;
-          bg.classList.toggle("hidden", !showBg);
-          if (showBg) renderStep1Background();
+        if (!bg) return;
+        const showBg = stepNumber === 1 || stepNumber === 2;
+        if (!showBg) {
+          destroyStep1Vanta();
+          bg.classList.add("hidden");
+        } else {
+          bg.classList.remove("hidden");
+          ensureStep1Vanta();
         }
       }
 
-      /** Genera un mosaico de siluetas de cartas vacías dispuestas en espiral de Arquímedes. */
-      function renderStep1Background() {
-        const bg = document.getElementById("step1Bg");
-        if (!bg) return;
-        bg.innerHTML = "";
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const cx = w / 2;
-        const cy = h / 2;
-        const maxR = Math.hypot(w, h) / 2 + 80;
-        const cardW = 22;
-        const cardH = 34;
-        const radialStep = 14;
-        const arcStep = 58;
+      function applyStepCommit(stepNumber) {
+        [step1, step2, step3].forEach(resetSectionOpacity);
+        step1.classList.toggle("hidden", stepNumber !== 1);
+        step2.classList.toggle("hidden", stepNumber !== 2);
+        step3.classList.toggle("hidden", stepNumber !== 3);
+        syncVantaForStep(stepNumber);
+      }
 
-        let theta = 0.4;
-        let r = radialStep * theta;
-        let i = 0;
+      function setStep(stepNumber, options = {}) {
+        const instant = Boolean(options && options.instant);
+        const target = stepNumber;
 
-        const frag = document.createDocumentFragment();
-        while (r < maxR && i < 800) {
-          const x = cx + r * Math.cos(theta);
-          const y = cy + r * Math.sin(theta);
-          const rotDeg = ((theta * 180) / Math.PI + 90) % 360;
-          const node = document.createElement("div");
-          node.className = "absolute rounded-[3px] border border-violet-200";
-          node.style.left = `${x}px`;
-          node.style.top = `${y}px`;
-          node.style.width = `${cardW}px`;
-          node.style.height = `${cardH}px`;
-          node.style.transform = `translate(-50%, -50%) rotate(${rotDeg}deg)`;
-          frag.appendChild(node);
-
-          const dTheta = arcStep / r;
-          theta += dTheta;
-          r = radialStep * theta;
-          i += 1;
+        if (instant) {
+          stepTransitionBusy = false;
+          applyStepCommit(target);
+          uiStep = target;
+          return Promise.resolve();
         }
-        bg.appendChild(frag);
+
+        if (stepTransitionBusy) {
+          return Promise.resolve();
+        }
+
+        if (uiStep === null) {
+          applyStepCommit(target);
+          uiStep = target;
+          return Promise.resolve();
+        }
+
+        if (uiStep === target) {
+          return Promise.resolve();
+        }
+
+        stepTransitionBusy = true;
+        const prev = uiStep;
+        const outgoing = prev === 1 ? step1 : prev === 2 ? step2 : step3;
+
+        return new Promise((resolve) => {
+          outgoing.classList.remove("opacity-100");
+          outgoing.classList.add("opacity-0");
+
+          window.setTimeout(() => {
+            resetSectionOpacity(outgoing);
+            applyStepCommit(target);
+            const incoming = target === 1 ? step1 : target === 2 ? step2 : step3;
+            incoming.classList.remove("opacity-100");
+            incoming.classList.add("opacity-0");
+            void incoming.offsetWidth;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                incoming.classList.remove("opacity-0");
+                incoming.classList.add("opacity-100");
+                uiStep = target;
+                stepTransitionBusy = false;
+                window.setTimeout(resolve, STEP_FADE_MS);
+              });
+            });
+          }, STEP_FADE_MS);
+        });
+      }
+
+      let step1VantaEffect = null;
+
+      function destroyStep1Vanta() {
+        if (step1VantaEffect && typeof step1VantaEffect.destroy === "function") {
+          try {
+            step1VantaEffect.destroy();
+          } catch (_) {}
+        }
+        step1VantaEffect = null;
+      }
+
+      function resizeStep1Vanta() {
+        if (step1VantaEffect && typeof step1VantaEffect.resize === "function") {
+          try {
+            step1VantaEffect.resize();
+          } catch (_) {}
+        }
+      }
+
+      function ensureStep1Vanta() {
+        const bg = document.getElementById("step1Bg");
+        if (!bg || bg.classList.contains("hidden")) return;
+        if (typeof window.VANTA === "undefined" || typeof window.VANTA.BIRDS !== "function") return;
+        if (step1VantaEffect) return;
+        step1VantaEffect = window.VANTA.BIRDS({
+          el: "#step1Bg",
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200.0,
+          minWidth: 200.0,
+          scale: 1.0,
+          scaleMobile: 1.0,
+          backgroundColor: 0x26,
+          color2: 0xdaff00,
+          separation: 63.0,
+          cohesion: 7.0,
+        });
       }
 
       function updateRemainingText() {
@@ -1795,7 +1877,7 @@
           toAnimationBtn.disabled = false;
           toAnimationBtn.classList.remove("opacity-40", "cursor-not-allowed");
         }
-        setStep(2);
+        void setStep(2);
       }
 
       function pickCardsForCurrentMode() {
@@ -1985,7 +2067,7 @@
         remainingDeck = remainingDeck.filter((card) => !selectedIds.has(card.id));
         manualSelected.clear();
         updateRemainingText();
-        setStep(3);
+        await setStep(3);
         persistSession();
         await animateReveal(selected, roundIndex);
       }
@@ -2023,6 +2105,14 @@
         if (deckModeToggle) {
           deckModeToggle.checked = deckMode === "major";
         }
+      }
+
+      /** Al pasar a solo mayores, quita menores; al volver al mazo completo, conserva todo lo elegido. */
+      function filterManualIdsForDeckMode(selectedIds, mode) {
+        if (mode === "major") {
+          return new Set([...selectedIds].filter((id) => typeof id === "string" && id.startsWith("m")));
+        }
+        return new Set(selectedIds);
       }
 
       function persistDeckMode() {
@@ -2067,8 +2157,8 @@
         applyDeckMode(newMode);
         revealedRounds = [];
         remainingDeck = [...fullDeck];
-        manualSelected.clear();
-        manualDeckPickSelections = new Set();
+        manualSelected = filterManualIdsForDeckMode(manualSelected, newMode);
+        manualDeckPickSelections = filterManualIdsForDeckMode(manualDeckPickSelections, newMode);
         mahjongCardCount = 0;
         if (mahjongStrip) {
           mahjongStrip.innerHTML = "";
@@ -2080,6 +2170,9 @@
         if (currentMode === "manual") {
           renderManualList({ resetListScroll: true });
           setManualHelper();
+          if (manualPickModal && !manualPickModal.classList.contains("hidden")) {
+            renderManualPickGrid({ resetListScroll: true });
+          }
         }
         persistDeckMode();
         persistSession();
@@ -2134,7 +2227,7 @@
         remainingDeck = fullDeck.filter((c) => !usedIds.has(c.id));
         currentMode = currentMode || "random";
         updateRemainingText();
-        setStep(3);
+        setStep(3, { instant: true });
         await ensureTarotMeaningsLoaded();
         for (let i = 0; i < rounds.length; i += 1) {
           await animateReveal(rounds[i], i, { instant: true });
@@ -2165,7 +2258,7 @@
         } catch (_) {}
         updateRemainingText();
         renderDeckPile();
-        setStep(1);
+        void setStep(1);
       }
 
       async function copyShareLinkToClipboard() {
@@ -2242,7 +2335,7 @@
 
       goRandomBtn.addEventListener("click", () => enterStep2("random"));
       goManualBtn.addEventListener("click", () => enterStep2("manual"));
-      backToModeBtn.addEventListener("click", () => setStep(1));
+      backToModeBtn.addEventListener("click", () => void setStep(1));
       toAnimationBtn.addEventListener("click", startAnimationStep);
       shareLinkBtn.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -2343,7 +2436,7 @@
         applyDeckMode(readDeckModeFromUrlOrStorage());
         remainingDeck = [...fullDeck];
         updateRemainingText();
-        setStep(1);
+        setStep(1, { instant: true });
         renderDeckPile();
 
         try {
