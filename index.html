@@ -942,6 +942,77 @@
         return map;
       }
 
+      const MAJOR_KEYWORD_TRIPLETS = {
+        m00: "Origen · Libertad · Espontaneidad",
+        m01: "Voluntad · Recursos · Comunicación",
+        m02: "Intuición · Silencio · Misterio",
+        m03: "Abundancia · Fertilidad · Cuidado",
+        m04: "Estructura · Autoridad · Orden",
+        m05: "Tradición · Enseñanza · Valores",
+        m06: "Elección · Amor · Alineación",
+        m07: "Avance · Determinación · Impulso",
+        m08: "Coraje · Paciencia · Integración",
+        m09: "Soledad · Sabiduría · Interioridad",
+        m10: "Ciclos · Cambio · Oportunidad",
+        m11: "Equidad · Verdad · Balance",
+        m12: "Perspectiva · Pausa · Entrega",
+        m13: "Transformación · Cierre · Renacimiento",
+        m14: "Armonía · Moderación · Fusión",
+        m15: "Deseo · Apego · Consciencia",
+        m16: "Crisis · Verdad · Liberación",
+        m17: "Esperanza · Inspiración · Calma",
+        m18: "Sombra · Sueño · Símbolo",
+        m19: "Claridad · Alegría · Vitalidad",
+        m20: "Despertar · Juicio · Renovar",
+        m21: "Integración · Plenitud · Totalidad"
+      };
+
+      function buildMinorArcanaKeywordTriplets() {
+        const suitMid = { w: "Fuego", c: "Agua", s: "Aire", p: "Tierra" };
+        const rankFirst = [
+          "Inicio",
+          "Dualidad",
+          "Expansión",
+          "Estabilidad",
+          "Prueba",
+          "Transición",
+          "Estrategia",
+          "Constancia",
+          "Umbral",
+          "Cierre",
+          "Exploración",
+          "Movimiento",
+          "Contención",
+          "Soberanía"
+        ];
+        const rankThird = [
+          "Potencial",
+          "Equilibrio",
+          "Colaboración",
+          "Base",
+          "Conflicto",
+          "Apoyo",
+          "Elección",
+          "Disciplina",
+          "Ansiedad",
+          "Legado",
+          "Curiosidad",
+          "Impulso",
+          "Intuición",
+          "Autoridad"
+        ];
+        const map = {};
+        for (const code of Object.keys(suitMid)) {
+          for (let i = 0; i < 14; i += 1) {
+            const id = `${code}${String(i + 1).padStart(2, "0")}`;
+            map[id] = `${rankFirst[i]} · ${suitMid[code]} · ${rankThird[i]}`;
+          }
+        }
+        return map;
+      }
+
+      const CARD_KEYWORD_TRIPLETS = Object.assign({}, MAJOR_KEYWORD_TRIPLETS, buildMinorArcanaKeywordTriplets());
+
       const CARD_INSIGHT_BLURBS = Object.assign(
         {
           m00: formatBanzhafReading({
@@ -1137,6 +1208,31 @@
         return blurbMeaning(shortWords(raw, 20));
       }
 
+      function cardKeywordTripletText(cardId) {
+        const fixed = cardId && CARD_KEYWORD_TRIPLETS[cardId];
+        if (fixed) return fixed;
+        const short = ourCardIdToApiShort(cardId);
+        const raw = short && meaningsByShort ? meaningsByShort.get(short) : "";
+        const words = String(shortWords(raw, 12))
+          .replace(/[,;:]/g, " ")
+          .split(/\s+/)
+          .filter(Boolean);
+        const picked = [];
+        for (const w of words) {
+          const lw = w.toLowerCase();
+          if (picked.some((p) => p.toLowerCase() === lw)) continue;
+          picked.push(w);
+          if (picked.length >= 3) break;
+        }
+        while (picked.length < 3) picked.push("Tarot");
+        return picked.slice(0, 3).join(" · ");
+      }
+
+      function cardDescriptionForTooltip(cardId, useFullInsight) {
+        if (useFullInsight) return cardDescriptionBlurb(cardId);
+        return cardKeywordTripletText(cardId);
+      }
+
       let deckMode = "full";
       let fullDeck = buildDeck(deckMode);
       let remainingDeck = [...fullDeck];
@@ -1310,17 +1406,42 @@
         );
       }
 
-      function attachCardTooltipBehavior(wrap, card) {
+      /** Texto largo solo para la unica carta de la primera tirada, hasta que exista alguna tirada posterior con mas de una carta. */
+      function tableCardTooltipUseFullInsight(roundIndex) {
+        if (roundIndex !== 0) return false;
+        const r0 = revealedRounds[0];
+        if (!r0 || r0.length !== 1) return false;
+        for (let i = 1; i < revealedRounds.length; i += 1) {
+          if (revealedRounds[i].length > 1) return false;
+        }
+        return true;
+      }
+
+      function attachCardTooltipBehavior(wrap, card, options) {
         const tip = getSharedCardTarotTooltip();
-        const html = `
+        const tableRound =
+          options && typeof options.tableRoundIndex === "number" && Number.isFinite(options.tableRoundIndex)
+            ? options.tableRoundIndex
+            : null;
+
+        const buildTooltipHtml = () => {
+          let useFullInsight;
+          if (tableRound != null) {
+            useFullInsight = tableCardTooltipUseFullInsight(tableRound);
+          } else {
+            useFullInsight = !options || options.useFullInsight !== false;
+          }
+          return `
             <p class="font-semibold text-nomad-deep">${escapeHtml(card.name)}</p>
             <p class="mt-2 border-t-2 border-black/10 pt-2 text-base leading-relaxed text-nomad-ink/90">${escapeHtml(
-              cardDescriptionBlurb(card.id)
+              cardDescriptionForTooltip(card.id, useFullInsight)
             )}</p>
           `;
+        };
+
         const showTooltip = () => {
           activeCardTooltipWrap = wrap;
-          tip.innerHTML = html;
+          tip.innerHTML = buildTooltipHtml();
           tip.style.opacity = "1";
           positionCardTooltip(wrap, tip);
         };
@@ -1969,7 +2090,7 @@
             </div>
           `;
           wrap.appendChild(innerFlip);
-          attachCardTooltipBehavior(wrap, card);
+          attachCardTooltipBehavior(wrap, card, { tableRoundIndex: roundIndex });
           attachCardHoverFrontBehavior(wrap);
           const faceImg = wrap.querySelector(".card-face-media");
           attachCardAnimatedPreviewBehavior(wrap, faceImg, card);
