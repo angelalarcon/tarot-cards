@@ -320,6 +320,72 @@
         </div>
       </div>
     </div>
+
+    <div
+      id="cardDetailModal"
+      class="fixed inset-0 z-[200] hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div
+        id="cardDetailBackdrop"
+        class="absolute inset-0 bg-white/65 backdrop-blur-md"
+        aria-hidden="true"
+      ></div>
+      <button
+        id="cardDetailCloseBtn"
+        type="button"
+        aria-label="Cerrar"
+        class="absolute right-4 top-4 z-[3] flex h-10 w-10 items-center justify-center rounded-md bg-transparent text-nomad-ink transition hover:bg-black/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep sm:right-6 sm:top-6"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      </button>
+      <div class="relative z-[2] flex h-full w-full items-start justify-center overflow-y-auto px-4 py-10 sm:items-center sm:px-6 sm:py-12">
+        <div class="flex w-full max-w-5xl flex-col gap-3 md:flex-row md:items-center md:gap-10 lg:gap-14">
+          <div class="flex flex-col gap-2 md:hidden">
+            <h2
+              data-card-detail-title
+              class="min-w-0 font-serif text-2xl font-semibold text-nomad-deep"
+            ></h2>
+            <p
+              data-card-detail-description
+              class="min-w-0 whitespace-pre-line text-base leading-relaxed text-nomad-ink/90"
+            ></p>
+          </div>
+          <div class="flex justify-center md:order-1 md:flex-shrink-0 md:justify-end">
+            <div class="relative aspect-[350/600] w-full max-w-[208px] overflow-hidden rounded-md border-2 border-black bg-nomad-paper shadow-[0_3px_0_0_rgba(0,0,0,0.85),0_8px_18px_rgba(51,52,68,0.18)] sm:max-w-[240px] md:max-w-[320px]">
+              <img
+                id="cardDetailImage"
+                src=""
+                alt=""
+                class="block h-full w-full object-contain object-center"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div class="flex min-w-0 flex-col gap-3 md:order-2 md:min-w-0 md:flex-1">
+            <h2
+              data-card-detail-title
+              class="hidden min-w-0 font-serif text-2xl font-semibold text-nomad-deep md:block md:text-3xl"
+            ></h2>
+            <p
+              data-card-detail-description
+              class="hidden min-w-0 whitespace-pre-line text-base leading-relaxed text-nomad-ink/90 md:block"
+            ></p>
+            <textarea
+              id="cardDetailNotes"
+              rows="5"
+              placeholder="Agrega tu interpretación..."
+              class="w-full resize-y rounded-md border border-black bg-nomad-cream px-3 py-2 text-base text-nomad-ink"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
 
     <script>
@@ -601,11 +667,20 @@
       const deckModeToggle = document.getElementById("deckModeToggle");
       const startupLoader = document.getElementById("startupLoader");
       const appContent = document.getElementById("appContent");
+      const cardDetailModal = document.getElementById("cardDetailModal");
+      const cardDetailBackdrop = document.getElementById("cardDetailBackdrop");
+      const cardDetailCloseBtn = document.getElementById("cardDetailCloseBtn");
+      const cardDetailImage = document.getElementById("cardDetailImage");
+      const cardDetailTitleEls = document.querySelectorAll("[data-card-detail-title]");
+      const cardDetailDescriptionEls = document.querySelectorAll("[data-card-detail-description]");
+      const cardDetailNotes = document.getElementById("cardDetailNotes");
 
       const SESSION_URL_PARAM = "r";
       const SESSION_STORAGE_KEY = "tarot:lastRounds";
       const DECK_MODE_URL_PARAM = "d";
       const DECK_MODE_STORAGE_KEY = "tarot:deckMode";
+      const NOTES_URL_PARAM = "n";
+      const NOTES_STORAGE_KEY = "tarot:lastNotes";
 
       function animatedImageForCardId(cardId) {
         if (!cardId) return "";
@@ -1561,6 +1636,197 @@
         hoverTarget.addEventListener("focusout", stopAnimated);
       }
 
+      const cardNotes = new Map();
+      let activeCardDetailCardId = null;
+      let cardDetailLastFocusedEl = null;
+      let persistCardNotesTimer = 0;
+
+      function serializeCardNotes() {
+        const obj = {};
+        for (const [id, val] of cardNotes.entries()) {
+          const v = String(val == null ? "" : val);
+          if (v.length > 0) obj[id] = v;
+        }
+        if (Object.keys(obj).length === 0) return "";
+        try {
+          return encodeURIComponent(JSON.stringify(obj));
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function parseCardNotesEncoded(encoded) {
+        const map = new Map();
+        if (!encoded) return map;
+        let parsed;
+        try {
+          parsed = JSON.parse(decodeURIComponent(encoded));
+        } catch (_) {
+          return map;
+        }
+        if (!parsed || typeof parsed !== "object") return map;
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof k === "string" && typeof v === "string" && v.length > 0) {
+            map.set(k, v);
+          }
+        }
+        return map;
+      }
+
+      function persistCardNotes() {
+        if (persistCardNotesTimer) {
+          window.clearTimeout(persistCardNotesTimer);
+          persistCardNotesTimer = 0;
+        }
+        const encoded = serializeCardNotes();
+        try {
+          const url = new URL(window.location.href);
+          if (encoded) {
+            url.searchParams.set(NOTES_URL_PARAM, encoded);
+          } else {
+            url.searchParams.delete(NOTES_URL_PARAM);
+          }
+          window.history.replaceState(null, "", url.toString());
+        } catch (_) {}
+        try {
+          if (encoded) {
+            window.localStorage.setItem(NOTES_STORAGE_KEY, encoded);
+          } else {
+            window.localStorage.removeItem(NOTES_STORAGE_KEY);
+          }
+        } catch (_) {}
+      }
+
+      function persistCardNotesDebounced() {
+        if (persistCardNotesTimer) window.clearTimeout(persistCardNotesTimer);
+        persistCardNotesTimer = window.setTimeout(() => {
+          persistCardNotesTimer = 0;
+          persistCardNotes();
+        }, 250);
+      }
+
+      function readCardNotesFromUrlOrStorage() {
+        let encoded = "";
+        try {
+          encoded = new URL(window.location.href).searchParams.get(NOTES_URL_PARAM) || "";
+        } catch (_) {
+          encoded = "";
+        }
+        if (!encoded) {
+          try {
+            encoded = window.localStorage.getItem(NOTES_STORAGE_KEY) || "";
+          } catch (_) {
+            encoded = "";
+          }
+        }
+        if (!encoded) return;
+        const parsed = parseCardNotesEncoded(encoded);
+        for (const [id, val] of parsed.entries()) {
+          cardNotes.set(id, val);
+        }
+      }
+
+      function clearActiveTableCardElevation() {
+        if (!activeFrontCardWrap) return;
+        removeTableCardElevated(activeFrontCardWrap);
+        activeFrontCardWrap.style.transform =
+          activeFrontCardWrap.dataset.baseTransform || activeFrontCardWrap.style.transform;
+        activeFrontCardWrap = null;
+      }
+
+      function openCardDetailModal(card, options) {
+        if (!card) return;
+        if (activeCardDetailCardId && activeCardDetailCardId !== card.id) {
+          cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
+        }
+        activeCardDetailCardId = card.id;
+        const animatedSrc = card.animatedImg || card.staticImg || card.img || "";
+        cardDetailImage.src = animatedSrc;
+        cardDetailImage.alt = card.name || "";
+        const titleText = card.name || "";
+        cardDetailTitleEls.forEach((el) => {
+          el.textContent = titleText;
+        });
+        const tableRoundIndex =
+          options && Number.isFinite(options.tableRoundIndex) ? options.tableRoundIndex : null;
+        const useFullInsight =
+          tableRoundIndex != null
+            ? tableCardTooltipUseFullInsight(tableRoundIndex)
+            : true;
+        const descriptionText = cardDescriptionForTooltip(card.id, useFullInsight) || "";
+        cardDetailDescriptionEls.forEach((el) => {
+          el.textContent = descriptionText;
+        });
+        cardDetailNotes.value = cardNotes.get(card.id) || "";
+        hideActiveCardTooltip();
+        clearActiveTableCardElevation();
+        cardDetailLastFocusedEl =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        cardDetailModal.classList.remove("hidden");
+        cardDetailModal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("overflow-hidden");
+        window.setTimeout(() => {
+          try {
+            cardDetailNotes.focus({ preventScroll: true });
+          } catch (_) {
+            cardDetailNotes.focus();
+          }
+        }, 50);
+      }
+
+      function closeCardDetailModal() {
+        if (cardDetailModal.classList.contains("hidden")) return;
+        if (activeCardDetailCardId) {
+          cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
+        }
+        activeCardDetailCardId = null;
+        persistCardNotes();
+        cardDetailModal.classList.add("hidden");
+        cardDetailModal.setAttribute("aria-hidden", "true");
+        cardDetailImage.removeAttribute("src");
+        document.body.classList.remove("overflow-hidden");
+        if (cardDetailLastFocusedEl && typeof cardDetailLastFocusedEl.focus === "function") {
+          try {
+            cardDetailLastFocusedEl.focus({ preventScroll: true });
+          } catch (_) {}
+        }
+        cardDetailLastFocusedEl = null;
+      }
+
+      function attachTableCardDetailBehavior(wrap, card, options) {
+        wrap.style.cursor = "pointer";
+        wrap.addEventListener("click", (event) => {
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          openCardDetailModal(card, options);
+        });
+        wrap.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openCardDetailModal(card, options);
+          }
+        });
+      }
+
+      cardDetailCloseBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeCardDetailModal();
+      });
+      cardDetailBackdrop.addEventListener("click", () => {
+        closeCardDetailModal();
+      });
+      cardDetailNotes.addEventListener("input", () => {
+        if (activeCardDetailCardId) {
+          cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
+          persistCardNotesDebounced();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (cardDetailModal.classList.contains("hidden")) return;
+        closeCardDetailModal();
+      });
+
       function buildManualCardThumbLabel(card) {
         const label = document.createElement("label");
         label.className =
@@ -1598,7 +1864,7 @@
         }
         label.appendChild(input);
         label.appendChild(frame);
-        attachCardTooltipBehavior(label, card);
+        attachCardTooltipBehavior(label, card, { useFullInsight: false });
         attachCardAnimatedPreviewBehavior(label, img, card);
         return { label, input };
       }
@@ -2090,7 +2356,7 @@
             </div>
           `;
           wrap.appendChild(innerFlip);
-          attachCardTooltipBehavior(wrap, card, { tableRoundIndex: roundIndex });
+          attachTableCardDetailBehavior(wrap, card, { tableRoundIndex: roundIndex });
           attachCardHoverFrontBehavior(wrap);
           const faceImg = wrap.querySelector(".card-face-media");
           attachCardAnimatedPreviewBehavior(wrap, faceImg, card);
@@ -2269,6 +2535,7 @@
         }
         animating = false;
         modalOpenRequested = false;
+        cardNotes.clear();
         updateRemainingText();
         renderDeckPile();
         if (currentMode === "manual") {
@@ -2280,6 +2547,7 @@
         }
         persistDeckMode();
         persistSession();
+        persistCardNotes();
       }
 
       function persistSession() {
@@ -2352,6 +2620,7 @@
         }
         animating = false;
         modalOpenRequested = false;
+        cardNotes.clear();
         try {
           window.localStorage.removeItem(SESSION_STORAGE_KEY);
         } catch (_) {}
@@ -2360,12 +2629,14 @@
           url.searchParams.delete(SESSION_URL_PARAM);
           window.history.replaceState(null, "", url.toString());
         } catch (_) {}
+        persistCardNotes();
         updateRemainingText();
         renderDeckPile();
         void setStep(1);
       }
 
       async function copyShareLinkToClipboard() {
+        persistCardNotes();
         const url = window.location.href;
         let copied = false;
         try {
@@ -2539,6 +2810,7 @@
       void (async () => {
         applyDeckMode(readDeckModeFromUrlOrStorage());
         remainingDeck = [...fullDeck];
+        readCardNotesFromUrlOrStorage();
         updateRemainingText();
         setStep(1, { instant: true });
         renderDeckPile();
