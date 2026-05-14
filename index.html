@@ -357,8 +357,11 @@
               class="min-w-0 whitespace-pre-line text-base leading-relaxed text-nomad-ink/90"
             ></p>
           </div>
-          <div class="flex justify-center md:order-1 md:flex-shrink-0 md:justify-end">
-            <div class="relative aspect-[350/600] w-full max-w-[208px] overflow-hidden rounded-md border-2 border-black bg-nomad-paper shadow-[0_3px_0_0_rgba(0,0,0,0.85),0_8px_18px_rgba(51,52,68,0.18)] sm:max-w-[240px] md:max-w-[320px]">
+          <div class="flex justify-center md:order-1 md:w-[320px] md:flex-shrink-0 md:justify-end">
+            <div
+              id="cardDetailImageFrame"
+              class="relative aspect-[350/600] w-full max-w-[208px] overflow-hidden rounded-md border-2 border-black bg-nomad-paper shadow-[0_3px_0_0_rgba(0,0,0,0.85),0_8px_18px_rgba(51,52,68,0.18)] sm:max-w-[240px] md:max-w-[320px]"
+            >
               <img
                 id="cardDetailImage"
                 src=""
@@ -672,6 +675,8 @@
       const cardDetailBackdrop = document.getElementById("cardDetailBackdrop");
       const cardDetailCloseBtn = document.getElementById("cardDetailCloseBtn");
       const cardDetailImage = document.getElementById("cardDetailImage");
+      const cardDetailImageFrame = document.getElementById("cardDetailImageFrame");
+      const CARD_DETAIL_IMAGE_BASE_CLASS = "block h-full w-full object-contain object-center";
       const cardDetailTitleEls = document.querySelectorAll("[data-card-detail-title]");
       const cardDetailDescriptionEls = document.querySelectorAll("[data-card-detail-description]");
       const cardDetailNotes = document.getElementById("cardDetailNotes");
@@ -1814,6 +1819,36 @@
         activeFrontCardWrap = null;
       }
 
+      function clearCardDetailPrintedTitle() {
+        if (!cardDetailImageFrame) return;
+        const existing = cardDetailImageFrame.querySelector("[data-printed-title-bar]");
+        if (existing) existing.remove();
+        for (const cls of CARD_FACE_PRINT_ROOT_TW.trim().split(/\s+/)) {
+          if (cls) cardDetailImageFrame.classList.remove(cls);
+        }
+      }
+
+      function applyCardDetailPrintedTitle(card) {
+        if (!cardDetailImageFrame) return;
+        clearCardDetailPrintedTitle();
+        const printedTitle = cardPrintedEnglishTitleUpper(card.id);
+        if (!printedTitle) return;
+        for (const cls of CARD_FACE_PRINT_ROOT_TW.trim().split(/\s+/)) {
+          if (cls) cardDetailImageFrame.classList.add(cls);
+        }
+        const titleBar = document.createElement("div");
+        titleBar.className = CARD_PRINTED_TITLE_BAR_CLASS;
+        titleBar.setAttribute("data-printed-title-bar", "");
+        titleBar.setAttribute("aria-hidden", "true");
+        const titleSpan = document.createElement("span");
+        titleSpan.className = CARD_PRINTED_TITLE_TEXT_CLASS;
+        titleSpan.setAttribute("data-printed-title-text", "");
+        titleSpan.textContent = printedTitle;
+        titleBar.appendChild(titleSpan);
+        cardDetailImageFrame.appendChild(titleBar);
+        fitCardPrintedTitleBar(titleBar);
+      }
+
       function openCardDetailModal(card, options) {
         if (!card) return;
         if (activeCardDetailCardId && activeCardDetailCardId !== card.id) {
@@ -1823,6 +1858,9 @@
         const animatedSrc = card.animatedImg || card.staticImg || card.img || "";
         cardDetailImage.src = animatedSrc;
         cardDetailImage.alt = card.name || "";
+        cardDetailImage.className =
+          CARD_DETAIL_IMAGE_BASE_CLASS + cardFaceImageScaleClass(card.id);
+        applyCardDetailPrintedTitle(card);
         const titleText = card.name || "";
         cardDetailTitleEls.forEach((el) => {
           el.textContent = titleText;
@@ -1864,6 +1902,8 @@
         cardDetailModal.classList.add("hidden");
         cardDetailModal.setAttribute("aria-hidden", "true");
         cardDetailImage.removeAttribute("src");
+        cardDetailImage.className = CARD_DETAIL_IMAGE_BASE_CLASS;
+        clearCardDetailPrintedTitle();
         document.body.classList.remove("overflow-hidden");
         if (cardDetailLastFocusedEl && typeof cardDetailLastFocusedEl.focus === "function") {
           try {
