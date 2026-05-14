@@ -1749,14 +1749,10 @@
         const encoded = serializeCardNotes();
         try {
           const url = new URL(window.location.href);
-          if (currentShareCode) {
+          if (url.searchParams.has(NOTES_URL_PARAM)) {
             url.searchParams.delete(NOTES_URL_PARAM);
-          } else if (encoded) {
-            url.searchParams.set(NOTES_URL_PARAM, encoded);
-          } else {
-            url.searchParams.delete(NOTES_URL_PARAM);
+            window.history.replaceState(null, "", url.toString());
           }
-          window.history.replaceState(null, "", url.toString());
         } catch (_) {}
         try {
           if (encoded) {
@@ -1777,8 +1773,10 @@
 
       function readCardNotesFromUrlOrStorage() {
         let encoded = "";
+        let cameFromUrl = false;
         try {
           encoded = new URL(window.location.href).searchParams.get(NOTES_URL_PARAM) || "";
+          if (encoded) cameFromUrl = true;
         } catch (_) {
           encoded = "";
         }
@@ -1787,6 +1785,18 @@
             encoded = window.localStorage.getItem(NOTES_STORAGE_KEY) || "";
           } catch (_) {
             encoded = "";
+          }
+        }
+        if (cameFromUrl) {
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete(NOTES_URL_PARAM);
+            window.history.replaceState(null, "", url.toString());
+          } catch (_) {}
+          if (encoded) {
+            try {
+              window.localStorage.setItem(NOTES_STORAGE_KEY, encoded);
+            } catch (_) {}
           }
         }
         if (!encoded) return;
@@ -2818,6 +2828,22 @@
         persistCardNotes();
         if (shareLinkBtn) shareLinkBtn.disabled = true;
         const uploaded = await persistSessionToSupabase();
+
+        if (!uploaded) {
+          if (shareLinkBtn) {
+            const originalHTML = shareLinkBtn.innerHTML;
+            shareLinkBtn.textContent = "Sin conexion";
+            window.setTimeout(() => {
+              shareLinkBtn.innerHTML = originalHTML;
+              shareLinkBtn.disabled = false;
+            }, 1800);
+          }
+          alert(
+            "No se pudo guardar la tirada en el servidor. Revisa tu conexion e intenta de nuevo. No se ha copiado ningun enlace para no exponer tus notas."
+          );
+          return;
+        }
+
         const url = window.location.href;
         let copied = false;
         try {
@@ -2840,11 +2866,7 @@
         }
         if (shareLinkBtn) {
           const originalHTML = shareLinkBtn.innerHTML;
-          shareLinkBtn.textContent = copied
-            ? uploaded
-              ? "Copiado!"
-              : "Copiado (sin sync)"
-            : "No se pudo copiar";
+          shareLinkBtn.textContent = copied ? "Copiado!" : "No se pudo copiar";
           shareLinkBtn.disabled = true;
           window.setTimeout(() => {
             shareLinkBtn.innerHTML = originalHTML;
