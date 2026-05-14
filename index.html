@@ -16,6 +16,7 @@
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -681,6 +682,73 @@
       const DECK_MODE_STORAGE_KEY = "tarot:deckMode";
       const NOTES_URL_PARAM = "n";
       const NOTES_STORAGE_KEY = "tarot:lastNotes";
+
+      const SUPABASE_URL = "https://kusalhbpsqtrgsfznxlz.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HvHBQyctMtnOPmYNjUkl6g_DmOOxC0d";
+      const SHARE_CODE_URL_PARAM = "c";
+      const SHARE_CODE_LENGTH = 10;
+      const SHARE_CODE_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+      const supabaseClient =
+        typeof window !== "undefined" &&
+        typeof window.supabase !== "undefined" &&
+        typeof window.supabase.createClient === "function"
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false },
+            })
+          : null;
+
+      let currentShareCode = null;
+
+      function generateShareCode() {
+        let out = "";
+        const len = SHARE_CODE_ALPHABET.length;
+        if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+          const buf = new Uint32Array(SHARE_CODE_LENGTH);
+          window.crypto.getRandomValues(buf);
+          for (let i = 0; i < SHARE_CODE_LENGTH; i += 1) {
+            out += SHARE_CODE_ALPHABET[buf[i] % len];
+          }
+        } else {
+          for (let i = 0; i < SHARE_CODE_LENGTH; i += 1) {
+            out += SHARE_CODE_ALPHABET[Math.floor(Math.random() * len)];
+          }
+        }
+        return out;
+      }
+
+      function readShareCodeFromUrl() {
+        try {
+          const value = new URL(window.location.href).searchParams.get(SHARE_CODE_URL_PARAM) || "";
+          return /^[0-9a-z]{6,16}$/i.test(value) ? value.toLowerCase() : "";
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function writeShareCodeToUrl(code) {
+        try {
+          const url = new URL(window.location.href);
+          if (code) {
+            url.searchParams.set(SHARE_CODE_URL_PARAM, code);
+            url.searchParams.delete(SESSION_URL_PARAM);
+            url.searchParams.delete(NOTES_URL_PARAM);
+            url.searchParams.delete(DECK_MODE_URL_PARAM);
+          } else {
+            url.searchParams.delete(SHARE_CODE_URL_PARAM);
+          }
+          window.history.replaceState(null, "", url.toString());
+        } catch (_) {}
+      }
+
+      function cardNotesToObject() {
+        const obj = {};
+        for (const [id, val] of cardNotes.entries()) {
+          const v = String(val == null ? "" : val);
+          if (v.length > 0) obj[id] = v;
+        }
+        return obj;
+      }
 
       function animatedImageForCardId(cardId) {
         if (!cardId) return "";
@@ -1681,7 +1749,9 @@
         const encoded = serializeCardNotes();
         try {
           const url = new URL(window.location.href);
-          if (encoded) {
+          if (currentShareCode) {
+            url.searchParams.delete(NOTES_URL_PARAM);
+          } else if (encoded) {
             url.searchParams.set(NOTES_URL_PARAM, encoded);
           } else {
             url.searchParams.delete(NOTES_URL_PARAM);
@@ -2488,7 +2558,9 @@
       function persistDeckMode() {
         try {
           const url = new URL(window.location.href);
-          if (deckMode === "major") {
+          if (currentShareCode) {
+            url.searchParams.delete(DECK_MODE_URL_PARAM);
+          } else if (deckMode === "major") {
             url.searchParams.set(DECK_MODE_URL_PARAM, "major");
           } else {
             url.searchParams.delete(DECK_MODE_URL_PARAM);
@@ -2554,7 +2626,9 @@
         const encoded = encodeRevealedRounds(revealedRounds);
         try {
           const url = new URL(window.location.href);
-          if (encoded) {
+          if (currentShareCode) {
+            url.searchParams.delete(SESSION_URL_PARAM);
+          } else if (encoded) {
             url.searchParams.set(SESSION_URL_PARAM, encoded);
           } else {
             url.searchParams.delete(SESSION_URL_PARAM);
@@ -2609,6 +2683,58 @@
         return true;
       }
 
+      async function fetchSharedReadingByCode(code) {
+        if (!supabaseClient || !code) return null;
+        try {
+          const { data, error } = await supabaseClient
+            .from("readings")
+            .select("session, notes, deck_mode")
+            .eq("code", code)
+            .maybeSingle();
+          if (error) {
+            console.warn("Supabase fetch failed", error);
+            return null;
+          }
+          return data || null;
+        } catch (err) {
+          console.warn("Supabase fetch exception", err);
+          return null;
+        }
+      }
+
+      function applySharedReadingNotes(notesValue) {
+        cardNotes.clear();
+        if (!notesValue || typeof notesValue !== "object") return;
+        for (const [id, val] of Object.entries(notesValue)) {
+          if (typeof id === "string" && typeof val === "string" && val.length > 0) {
+            cardNotes.set(id, val);
+          }
+        }
+      }
+
+      async function restoreSessionFromShared(data) {
+        if (!data) return false;
+        const sessionEncoded = String(data.session || "");
+        const rounds = decodeRevealedRounds(sessionEncoded, fullDeck);
+        revealedRounds = rounds;
+        const usedIds = new Set();
+        for (const round of rounds) for (const c of round) usedIds.add(c.id);
+        remainingDeck = fullDeck.filter((c) => !usedIds.has(c.id));
+        currentMode = currentMode || "random";
+        updateRemainingText();
+        if (rounds.length === 0) {
+          renderDeckPile();
+          return true;
+        }
+        setStep(3, { instant: true });
+        await ensureTarotMeaningsLoaded();
+        for (let i = 0; i < rounds.length; i += 1) {
+          await animateReveal(rounds[i], i, { instant: true });
+        }
+        renderDeckPile();
+        return true;
+      }
+
       function resetSession() {
         revealedRounds = [];
         remainingDeck = [...fullDeck];
@@ -2621,12 +2747,14 @@
         animating = false;
         modalOpenRequested = false;
         cardNotes.clear();
+        currentShareCode = null;
         try {
           window.localStorage.removeItem(SESSION_STORAGE_KEY);
         } catch (_) {}
         try {
           const url = new URL(window.location.href);
           url.searchParams.delete(SESSION_URL_PARAM);
+          url.searchParams.delete(SHARE_CODE_URL_PARAM);
           window.history.replaceState(null, "", url.toString());
         } catch (_) {}
         persistCardNotes();
@@ -2635,8 +2763,61 @@
         void setStep(1);
       }
 
+      async function persistSessionToSupabase() {
+        if (!supabaseClient) return false;
+        const sessionEncoded = encodeRevealedRounds(revealedRounds);
+        const notesObj = cardNotesToObject();
+        const payload = {
+          session: sessionEncoded,
+          notes: notesObj,
+          deck_mode: deckMode === "major" ? "major" : "full",
+        };
+
+        if (currentShareCode) {
+          try {
+            const { error } = await supabaseClient
+              .from("readings")
+              .update({ ...payload, updated_at: new Date().toISOString() })
+              .eq("code", currentShareCode);
+            if (error) {
+              console.warn("Supabase update failed", error);
+              return false;
+            }
+            return true;
+          } catch (err) {
+            console.warn("Supabase update exception", err);
+            return false;
+          }
+        }
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const code = generateShareCode();
+          try {
+            const { error } = await supabaseClient
+              .from("readings")
+              .insert({ code, ...payload });
+            if (!error) {
+              currentShareCode = code;
+              writeShareCodeToUrl(code);
+              return true;
+            }
+            if (error && (error.code === "23505" || /duplicate key/i.test(error.message || ""))) {
+              continue;
+            }
+            console.warn("Supabase insert failed", error);
+            return false;
+          } catch (err) {
+            console.warn("Supabase insert exception", err);
+            return false;
+          }
+        }
+        return false;
+      }
+
       async function copyShareLinkToClipboard() {
         persistCardNotes();
+        if (shareLinkBtn) shareLinkBtn.disabled = true;
+        const uploaded = await persistSessionToSupabase();
         const url = window.location.href;
         let copied = false;
         try {
@@ -2659,7 +2840,11 @@
         }
         if (shareLinkBtn) {
           const originalHTML = shareLinkBtn.innerHTML;
-          shareLinkBtn.textContent = copied ? "Copiado!" : "No se pudo copiar";
+          shareLinkBtn.textContent = copied
+            ? uploaded
+              ? "Copiado!"
+              : "Copiado (sin sync)"
+            : "No se pudo copiar";
           shareLinkBtn.disabled = true;
           window.setTimeout(() => {
             shareLinkBtn.innerHTML = originalHTML;
@@ -2808,9 +2993,31 @@
       bindQuantityStepper("modalDrawCountInput", "modalDrawCountDec", "modalDrawCountInc");
 
       void (async () => {
-        applyDeckMode(readDeckModeFromUrlOrStorage());
-        remainingDeck = [...fullDeck];
-        readCardNotesFromUrlOrStorage();
+        const shareCodeFromUrl = readShareCodeFromUrl();
+        let sharedReading = null;
+        if (shareCodeFromUrl) {
+          sharedReading = await fetchSharedReadingByCode(shareCodeFromUrl);
+          if (sharedReading) {
+            currentShareCode = shareCodeFromUrl;
+          } else {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete(SHARE_CODE_URL_PARAM);
+              window.history.replaceState(null, "", url.toString());
+            } catch (_) {}
+          }
+        }
+
+        if (sharedReading) {
+          applyDeckMode(sharedReading.deck_mode === "major" ? "major" : "full");
+          remainingDeck = [...fullDeck];
+          applySharedReadingNotes(sharedReading.notes);
+          writeShareCodeToUrl(currentShareCode);
+        } else {
+          applyDeckMode(readDeckModeFromUrlOrStorage());
+          remainingDeck = [...fullDeck];
+          readCardNotesFromUrlOrStorage();
+        }
         updateRemainingText();
         setStep(1, { instant: true });
         renderDeckPile();
@@ -2821,7 +3028,11 @@
         hideStartupLoader();
 
         try {
-          await restoreSessionIfAny();
+          if (sharedReading) {
+            await restoreSessionFromShared(sharedReading);
+          } else {
+            await restoreSessionIfAny();
+          }
         } catch (_) {}
       })();
     </script>
