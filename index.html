@@ -1934,13 +1934,6 @@
         cardDetailModal.classList.remove("hidden");
         cardDetailModal.setAttribute("aria-hidden", "false");
         document.body.classList.add("overflow-hidden");
-        window.setTimeout(() => {
-          try {
-            cardDetailNotes.focus({ preventScroll: true });
-          } catch (_) {
-            cardDetailNotes.focus();
-          }
-        }, 50);
       }
 
       function closeCardDetailModal() {
