@@ -15,6 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
+    <link href="https://fonts.cdnfonts.com/css/ananda-black" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -24,6 +25,7 @@
             fontFamily: {
               sans: ['"DM Sans"', "system-ui", "sans-serif"],
               serif: ['ui-serif', "Georgia", '"Times New Roman"', '"DejaVu Serif"', "Times", "serif"],
+              ananda: ['"Ananda Black"', "cursive"],
             },
             colors: {
               nomad: {
@@ -43,16 +45,6 @@
             backgroundImage: {
               "noise-grain":
                 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
-              "tarot-sky":
-                "linear-gradient(to bottom, rgba(244, 241, 234, 0.88) 0%, rgba(247, 227, 225, 0.78) 42%, rgba(176, 196, 222, 0.72) 100%), url(\"./assets/bg-tarot-sky.png\")",
-              "tarot-spread":
-                "linear-gradient(to bottom, rgba(244, 241, 234, 0.82) 0%, rgba(232, 209, 209, 0.55) 38%, rgba(176, 196, 222, 0.75) 100%), url(\"./assets/bg-tarot-spread.png\")",
-            },
-            backgroundSize: {
-              "tarot-dual": "cover, cover",
-            },
-            backgroundPosition: {
-              "tarot-spread-layers": "center, center bottom",
             },
             keyframes: {
               deckBounceMobile: {
@@ -71,6 +63,57 @@
             },
           },
         },
+        plugins: [
+          function ({ addComponents }) {
+            const tarotPhotoBase = {
+              content: '""',
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: "100vh",
+              height: "100vw",
+              transform: "translate(-50%, -50%) rotate(90deg)",
+              backgroundImage: 'url("./assets/background.jpg")',
+              backgroundSize: "cover",
+              backgroundRepeat: "no-repeat",
+              pointerEvents: "none",
+            };
+            const tarotOverlayBase = {
+              content: '""',
+              position: "absolute",
+              inset: "0",
+              backgroundSize: "cover",
+              backgroundRepeat: "no-repeat",
+              pointerEvents: "none",
+            };
+            addComponents({
+              ".bg-tarot-sky": {
+                position: "relative",
+                isolation: "isolate",
+                "&::before": {
+                  ...tarotPhotoBase,
+                  zIndex: -2,
+                  backgroundPosition: "center",
+                },
+              },
+              ".bg-tarot-spread": {
+                position: "relative",
+                isolation: "isolate",
+                "&::before": {
+                  ...tarotPhotoBase,
+                  zIndex: -2,
+                  backgroundPosition: "center bottom",
+                },
+                "&::after": {
+                  ...tarotOverlayBase,
+                  zIndex: -1,
+                  background:
+                    "rgba(255, 255, 255, 0.4)",
+                },
+              },
+            });
+          },
+        ],
       };
     </script>
   </head>
@@ -87,16 +130,20 @@
     <div id="appContent" class="invisible relative z-[2] opacity-0 transition-opacity duration-300">
     <div
       id="tarotBackdrop"
-      class="pointer-events-none fixed inset-0 z-0 min-h-[100dvh] min-w-[200px] bg-tarot-sky bg-tarot-dual bg-center bg-no-repeat"
+      class="pointer-events-none fixed inset-0 z-0 min-h-[100dvh] min-w-[200px] bg-tarot-sky"
       aria-hidden="true"
     ></div>
     <main class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
       <section id="step1" class="opacity-100 transition-opacity duration-300 ease-out">
-        <h1 class="text-center font-serif text-3xl font-semibold uppercase leading-none tracking-[-0.03em] text-nomad-ink [font-synthesis:none] [text-rendering:optimizeLegibility] md:text-[2.35rem]">Tarot Digital</h1>
+        <h1 class="text-center font-ananda text-3xl font-normal normal-case leading-none tracking-normal text-nomad-ink [font-synthesis:none] [text-rendering:optimizeLegibility] md:text-8xl">
+          El Tarot 
+          <br>
+          de Anais
+        </h1>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <button
             id="goRandomBtn"
-            class="flex flex-col items-stretch gap-2 rounded-md border-2 border-black bg-nomad-sea px-4 py-4 text-left text-white shadow-none transition hover:bg-nomad-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
+            class="flex flex-col items-stretch gap-2 rounded-md bg-[#242F49] px-4 py-4 text-left text-white shadow-none transition hover:bg-[#242F49]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
           >
             <span class="text-lg font-semibold uppercase tracking-wide">Hazme una lectura</span>
             <span class="text-sm font-normal leading-snug text-white/90">
@@ -105,7 +152,7 @@
           </button>
           <button
             id="goManualBtn"
-            class="flex flex-col items-stretch gap-2 rounded-md border-2 border-black bg-nomad-peach px-4 py-4 text-left text-nomad-ink transition hover:bg-nomad-dusk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
+            class="flex flex-col items-stretch gap-2 rounded-md bg-nomad-peach px-4 py-4 text-left text-nomad-ink transition hover:bg-nomad-peach/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
           >
             <span class="text-lg font-semibold uppercase tracking-wide">Tengo mis cartas</span>
             <span class="text-sm font-normal leading-snug text-nomad-deep/95">
@@ -152,7 +199,7 @@
           </div>
           <div id="deckModeToggleSlotRandom" class="mt-4 flex w-full max-w-md justify-center self-center">
             <label id="deckModeToggleWrap" class="flex shrink-0 cursor-pointer items-center gap-2 text-left text-sm sm:gap-3">
-              <span class="leading-snug">Solo Arcanos Mayores</span>
+              <span class="leading-snug font-semibold">Solo Arcanos Mayores</span>
               <div class="relative flex shrink-0 items-center gap-1">
                 <input
                   id="deckModeToggle"
@@ -161,7 +208,7 @@
                   aria-label="Solo arcanos mayores"
                 />
                 <span
-                  class="flex h-[24px] w-[40px] rounded-full border border-black bg-nomad-mist/80 p-[1px] transition-all duration-500 peer-checked:justify-end peer-checked:bg-nomad-mint"
+                  class="flex h-[24px] w-[40px] rounded-full border bg-nomad-mist/80 p-[1px] transition-all duration-500 peer-checked:justify-end peer-checked:bg-nomad-mint"
                   aria-hidden="true"
                 >
                   <span class="h-full w-[22px] rounded-full bg-white"></span>
@@ -171,14 +218,14 @@
           </div>
         </div>
 
-        <div id="manualConfig" class="mt-5 hidden rounded-md border-2 border-black bg-nomad-cream/95 p-4">
+        <div id="manualConfig" class="mt-5 hidden rounded-md bg-nomad-cream/95 p-4">
           <p id="manualHelper" class="text-lg text-nomad-deep/95 sm:text-xl">Selecciona cartas del listado.</p>
           <div class="mt-3 flex min-w-0 flex-row items-center gap-3">
             <input
               id="manualSearchInput"
               type="text"
               placeholder="Buscar carta..."
-              class="min-w-0 flex-1 rounded-md border-2 border-black bg-white px-3 py-2 text-nomad-ink outline-none ring-nomad-sea transition focus:ring-2 focus:ring-nomad-sea"
+              class="min-w-0 flex-1 rounded-md bg-white px-3 py-2 text-nomad-ink outline-none ring-nomad-sea transition focus:ring-2 focus:ring-nomad-sea"
             />
             <div id="deckModeToggleSlotManual" class="flex shrink-0 items-center"></div>
           </div>
@@ -189,12 +236,12 @@
         </div>
 
         <div class="mx-auto mt-6 flex w-full max-w-md justify-center gap-3">
-          <button id="backToModeBtn" class="rounded-md border-2 border-black bg-transparent px-4 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40">
+          <button id="backToModeBtn" class="rounded-md bg-white px-4 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40">
             Volver
           </button>
           <button
             id="toAnimationBtn"
-            class="min-w-0 flex-1 rounded-md border-2 border-black bg-nomad-sage px-4 py-2 text-center font-semibold text-white transition hover:bg-nomad-deep"
+            class="min-w-0 flex-1 rounded-md bg-nomad-sage px-4 py-2 text-center font-semibold text-white transition hover:bg-nomad-deep"
           >
             Sacar cartas
           </button>
@@ -203,8 +250,12 @@
 
       <section
         id="step3"
-        class="fixed inset-0 z-40 hidden bg-tarot-spread bg-tarot-dual bg-tarot-spread-layers bg-no-repeat opacity-100 transition-opacity duration-300 ease-out"
+        class="fixed inset-0 z-40 hidden opacity-100 transition-opacity duration-300 ease-out"
       >
+        <div
+          class="pointer-events-none absolute inset-0 z-0 bg-tarot-spread"
+          aria-hidden="true"
+        ></div>
         <div class="absolute right-4 top-4 z-20 flex items-center gap-2 pr-3">
           <button
             id="resetSessionBtn"
@@ -230,7 +281,7 @@
           </button>
         </div>
 
-        <div id="animationStage" class="relative h-screen overflow-auto scroll-smooth bg-nomad-paper/50">
+        <div id="animationStage" class="relative z-10 h-screen overflow-auto scroll-smooth">
           <div
             id="cardsLayer"
             class="relative z-0 flex min-h-full flex-col items-stretch pt-12 px-6 pb-40 md:pb-52 md:pl-[11rem]"
@@ -245,7 +296,7 @@
 
     <div id="drawModal" class="fixed inset-0 z-50 hidden grid place-items-center bg-nomad-ink/40 px-3 py-3 sm:px-4">
       <div class="w-full max-w-[min(22rem,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-md border-2 border-black bg-nomad-cream p-4 shadow-none sm:max-w-sm sm:p-5">
-        <h3 class="text-base font-bold text-nomad-deep sm:text-lg">Cuantas cartas quieres sacar</h3>
+        <h3 class="text-base font-bold text-nomad-deep sm:text-3xl">Cuantas cartas quieres sacar</h3>
         <div
           class="mt-4 flex w-full items-stretch rounded-full border-2 border-black bg-nomad-cream px-0.5 py-0.5 shadow-inner"
         >
@@ -2263,7 +2314,7 @@
             ? "Elige tus cartas"
             : `Listas para la tirada: ${n} carta(s). Pulsa cuando quieras pasar a la mesa.`;
         toAnimationBtn.disabled = n < 1;
-        toAnimationBtn.classList.toggle("opacity-40", toAnimationBtn.disabled);
+        toAnimationBtn.classList.toggle("opacity-70", toAnimationBtn.disabled);
         toAnimationBtn.classList.toggle("cursor-not-allowed", toAnimationBtn.disabled);
       }
 
@@ -2364,7 +2415,7 @@
           setManualHelper();
         } else {
           toAnimationBtn.disabled = false;
-          toAnimationBtn.classList.remove("opacity-40", "cursor-not-allowed");
+          toAnimationBtn.classList.remove("opacity-70", "cursor-not-allowed");
         }
         void setStep(2);
       }
