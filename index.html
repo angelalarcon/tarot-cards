@@ -135,7 +135,7 @@
     ></div>
     <main class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
       <section id="step1" class="opacity-100 transition-opacity duration-300 ease-out">
-        <h1 class="text-center font-ananda text-5xl font-normal normal-case leading-none tracking-normal text-nomad-ink [font-synthesis:none] [text-rendering:optimizeLegibility] md:text-8xl">
+        <h1 class="text-center font-ananda text-5xl font-normal normal-case leading-none tracking-normal text-white md:text-nomad-ink [font-synthesis:none] [text-rendering:optimizeLegibility] md:text-8xl">
           El Tarot 
           <br>
           de Anais
@@ -143,21 +143,32 @@
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <button
             id="goRandomBtn"
-            class="flex flex-col items-stretch gap-2 rounded-md bg-[#242F49] px-4 py-4 text-left text-white shadow-none transition hover:bg-[#242F49]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
+            class="flex items-center justify-center gap-4 rounded-md bg-[#23305A] px-4 py-4 text-left text-white shadow-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
           >
-            <span class="text-lg font-semibold uppercase tracking-wide">Hazme una lectura</span>
-            <span class="text-sm font-normal leading-snug text-white/90">
-              Saca cartas al azar.
-            </span>
+            <video src="./assets/do-a-reading.mp4" class="w-20 md:w-40" muted loop playsinline preload="metadata"></video>
+            <div class="flex flex-col gap-3">
+              <div class="text-lg font-semibold uppercase tracking-wide">Hazme una lectura</div>
+              <p class="font-normal leading-snug">
+                Saca cartas al azar.
+              </p>
+            </div>
           </button>
           <button
             id="goManualBtn"
-            class="flex flex-col items-stretch gap-2 rounded-md bg-nomad-peach px-4 py-4 text-left text-nomad-ink transition hover:bg-nomad-peach/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
+            class="flex items-center justify-center gap-4 rounded-md bg-[#595C5B] px-4 py-4 text-left text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-ink"
           >
-            <span class="text-lg font-semibold uppercase tracking-wide">Tengo mis cartas</span>
-            <span class="text-sm font-normal leading-snug text-nomad-deep/95">
-              Tiraste con tu mazo físico, marca las cartas que salieron y comparte la tirada.
-            </span>
+            <video src="./assets/i-got-cards.mp4" class="w-20 md:w-40" muted loop playsinline preload="metadata"></video>
+            <div class="flex flex-col gap-3">
+              <div class="text-lg font-semibold uppercase tracking-wide">Tengo mis cartas</div>
+              <p class="font-normal leading-snug">
+                Tiraste con tu mazo en casa?
+              </p>
+              <ol class="list-decimal list-inside text-sm font-normal leading-snug flex flex-col gap-2">
+                <li>Marca las cartas que salieron</li>
+                <li>Agrega notas a cada carta</li>
+                <li>Comparte tu tirada</li>
+              </ol>
+            </div>
           </button>
         </div>
       </section>
@@ -2999,6 +3010,24 @@
         }
       }
 
+      function wireStep1VideoHover(btn) {
+        const video = btn.querySelector("video");
+        if (!video) return;
+        const play = () => {
+          void video.play();
+        };
+        const stop = () => {
+          video.pause();
+          video.currentTime = 0;
+        };
+        btn.addEventListener("mouseenter", play);
+        btn.addEventListener("mouseleave", stop);
+        btn.addEventListener("focusin", play);
+        btn.addEventListener("focusout", stop);
+      }
+      wireStep1VideoHover(goRandomBtn);
+      wireStep1VideoHover(goManualBtn);
+
       goRandomBtn.addEventListener("click", () => enterStep2("random"));
       goManualBtn.addEventListener("click", () => enterStep2("manual"));
       backToModeBtn.addEventListener("click", () => void setStep(1));
@@ -3094,6 +3123,75 @@
         if (deckPile.classList.contains("animate-deck-bounce-mobile")) return;
         deckPile.classList.add("animate-deck-bounce-mobile");
       }, 10000);
+
+      function bindPingPongVideo(video) {
+        if (!video) return;
+
+        let direction = 1;
+        let reverseRaf = 0;
+        let reverseLastTs = 0;
+
+        function stopReverse() {
+          if (reverseRaf) {
+            cancelAnimationFrame(reverseRaf);
+            reverseRaf = 0;
+          }
+          reverseLastTs = 0;
+        }
+
+        function playForward() {
+          direction = 1;
+          stopReverse();
+          video.playbackRate = 1;
+          if (video.currentTime <= 0.01) {
+            video.currentTime = 0;
+          }
+          void video.play().catch(() => {});
+        }
+
+        function reverseFrame(ts) {
+          if (!reverseLastTs) reverseLastTs = ts;
+          const dt = Math.min((ts - reverseLastTs) / 1000, 0.05);
+          reverseLastTs = ts;
+
+          const nextTime = video.currentTime - dt;
+          if (nextTime <= 0) {
+            video.currentTime = 0;
+            playForward();
+            return;
+          }
+
+          video.currentTime = nextTime;
+          reverseRaf = requestAnimationFrame(reverseFrame);
+        }
+
+        function startReverse() {
+          if (direction === -1) return;
+          direction = -1;
+          video.pause();
+          stopReverse();
+          reverseRaf = requestAnimationFrame(reverseFrame);
+        }
+
+        function onForwardNearEnd() {
+          if (direction !== 1) return;
+          const duration = video.duration;
+          if (!Number.isFinite(duration) || duration <= 0) return;
+          if (video.currentTime < duration - 0.08) return;
+          startReverse();
+        }
+
+        video.addEventListener("ended", startReverse);
+        video.addEventListener("timeupdate", onForwardNearEnd);
+
+        if (video.readyState >= 1) {
+          playForward();
+        } else {
+          video.addEventListener("loadedmetadata", playForward, { once: true });
+        }
+      }
+
+      bindPingPongVideo(document.getElementById("iGotCardsVideo"));
 
       bindQuantityStepper("drawCountInput", "drawCountDec", "drawCountInc");
       bindQuantityStepper("modalDrawCountInput", "modalDrawCountDec", "modalDrawCountInc");
