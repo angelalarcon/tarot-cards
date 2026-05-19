@@ -445,12 +445,68 @@
               data-card-detail-description
               class="hidden min-w-0 whitespace-pre-line text-base leading-relaxed text-nomad-ink/90 md:block"
             ></p>
-            <textarea
-              id="cardDetailNotes"
-              rows="5"
-              placeholder="Agrega tu interpretación..."
-              class="w-full resize-y rounded-md border border-black bg-nomad-cream px-3 py-2 text-base text-nomad-ink"
-            ></textarea>
+            <div id="cardDetailNotesArea" class="w-full">
+              <textarea
+                id="cardDetailNotes"
+                rows="5"
+                placeholder="Agrega tu interpretación..."
+                class="w-full resize-y rounded-md border border-black bg-nomad-cream px-3 py-2 text-base text-nomad-ink"
+              ></textarea>
+              <div
+                id="cardDetailNotesMessage"
+                class="hidden w-full"
+                role="region"
+                aria-label="Interpretación del tarotista"
+              >
+                <div class="flex items-start gap-2.5">
+                  <div
+                    class="relative min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-nomad-sea/25 bg-gradient-to-br from-nomad-cream via-nomad-cream to-nomad-peach/50 px-4 py-3 text-base leading-relaxed text-nomad-ink shadow-[0_2px_0_0_rgba(51,51,68,0.12)] before:pointer-events-none before:absolute before:-left-1.5 before:top-3 before:h-3 before:w-3 before:rotate-45 before:border-b before:border-l before:border-nomad-sea/25 before:bg-nomad-cream before:content-['']"
+                  >
+                    <p
+                      id="cardDetailNotesMessageText"
+                      class="relative z-[1] whitespace-pre-line"
+                    ></p>
+                    <p
+                      id="cardDetailNotesMessageEmpty"
+                      class="relative z-[1] hidden text-nomad-ink/55 italic"
+                    >
+                      Tu tarotista no dejó notas para esta carta.
+                    </p>
+                  </div>
+                  <div class="relative shrink-0 pt-1">
+                    <button
+                      id="cardDetailNotesInfoBtn"
+                      type="button"
+                      class="flex h-8 w-8 items-center justify-center rounded-full border border-nomad-sea/30 bg-nomad-cream text-nomad-deep transition hover:border-nomad-sea/50 hover:bg-nomad-peach/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
+                      aria-label="Información sobre esta interpretación"
+                      aria-describedby="cardDetailNotesInfoTooltip"
+                    >
+                      <svg
+                        class="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                    </button>
+                    <div
+                      id="cardDetailNotesInfoTooltip"
+                      role="tooltip"
+                      class="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-52 rounded-md border border-black/10 bg-nomad-cream px-3 py-2 text-left text-sm leading-snug text-nomad-ink shadow-[0_2px_0_0_rgba(0,0,0,0.85)]"
+                    >
+                      Esta es la lectura de tu tarotista.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -722,6 +778,11 @@
       const cardDetailTitleEls = document.querySelectorAll("[data-card-detail-title]");
       const cardDetailDescriptionEls = document.querySelectorAll("[data-card-detail-description]");
       const cardDetailNotes = document.getElementById("cardDetailNotes");
+      const cardDetailNotesMessage = document.getElementById("cardDetailNotesMessage");
+      const cardDetailNotesMessageText = document.getElementById("cardDetailNotesMessageText");
+      const cardDetailNotesMessageEmpty = document.getElementById("cardDetailNotesMessageEmpty");
+      const cardDetailNotesInfoBtn = document.getElementById("cardDetailNotesInfoBtn");
+      const cardDetailNotesInfoTooltip = document.getElementById("cardDetailNotesInfoTooltip");
 
       const SESSION_URL_PARAM = "r";
       const SESSION_STORAGE_KEY = "tarot:lastRounds";
@@ -833,16 +894,42 @@
         return isShareCodeOwnedBySession(currentShareCode);
       }
 
+      function hideCardDetailTarotistInfoTooltip() {
+        if (cardDetailNotesInfoTooltip) {
+          cardDetailNotesInfoTooltip.classList.add("hidden");
+        }
+      }
+
+      function showCardDetailTarotistInfoTooltip() {
+        if (cardDetailNotesInfoTooltip) {
+          cardDetailNotesInfoTooltip.classList.remove("hidden");
+        }
+      }
+
+      function setCardDetailNotesContent(noteText) {
+        const text = String(noteText == null ? "" : noteText);
+        if (cardDetailNotes) {
+          cardDetailNotes.value = text;
+        }
+        if (cardDetailNotesMessageText) {
+          cardDetailNotesMessageText.textContent = text;
+          cardDetailNotesMessageText.classList.toggle("hidden", text.length === 0);
+        }
+        if (cardDetailNotesMessageEmpty) {
+          cardDetailNotesMessageEmpty.classList.toggle("hidden", text.length > 0);
+        }
+      }
+
       function applyCardNotesEditingPermissions() {
         const canEdit = canEditCardInterpretations();
         if (cardDetailNotes) {
-          cardDetailNotes.readOnly = !canEdit;
-          cardDetailNotes.setAttribute("aria-readonly", canEdit ? "false" : "true");
-          cardDetailNotes.placeholder = canEdit
-            ? "Agrega tu interpretación..."
-            : "Interpretación compartida (solo lectura)";
-          cardDetailNotes.classList.toggle("cursor-not-allowed", !canEdit);
-          cardDetailNotes.classList.toggle("bg-nomad-paper/80", !canEdit);
+          cardDetailNotes.classList.toggle("hidden", !canEdit);
+        }
+        if (cardDetailNotesMessage) {
+          cardDetailNotesMessage.classList.toggle("hidden", canEdit);
+        }
+        if (!canEdit) {
+          hideCardDetailTarotistInfoTooltip();
         }
         if (shareLinkBtn) {
           const shareLabel = canEdit ? "Copiar URL" : "Copiar enlace de esta tirada";
@@ -1986,7 +2073,7 @@
         cardDetailDescriptionEls.forEach((el) => {
           el.textContent = descriptionText;
         });
-        cardDetailNotes.value = cardNotes.get(card.id) || "";
+        setCardDetailNotesContent(cardNotes.get(card.id) || "");
         hideActiveCardTooltip();
         clearActiveTableCardElevation();
         cardDetailLastFocusedEl =
@@ -1998,6 +2085,7 @@
 
       function closeCardDetailModal() {
         if (cardDetailModal.classList.contains("hidden")) return;
+        hideCardDetailTarotistInfoTooltip();
         if (activeCardDetailCardId && canEditCardInterpretations()) {
           cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
         }
@@ -2046,6 +2134,14 @@
           persistCardNotesDebounced();
         }
       });
+      if (cardDetailNotesInfoBtn && cardDetailNotesInfoTooltip) {
+        const showInfo = () => showCardDetailTarotistInfoTooltip();
+        const hideInfo = () => hideCardDetailTarotistInfoTooltip();
+        cardDetailNotesInfoBtn.addEventListener("mouseenter", showInfo);
+        cardDetailNotesInfoBtn.addEventListener("mouseleave", hideInfo);
+        cardDetailNotesInfoBtn.addEventListener("focus", showInfo);
+        cardDetailNotesInfoBtn.addEventListener("blur", hideInfo);
+      }
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         if (cardDetailModal.classList.contains("hidden")) return;
