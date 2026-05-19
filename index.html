@@ -17,6 +17,8 @@
     />
     <link href="https://fonts.cdnfonts.com/css/ananda-black" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./js/i18n.js"></script>
+    <script src="./js/startup.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       tailwind.config = {
@@ -118,13 +120,81 @@
     </script>
   </head>
   <body class="min-h-screen overflow-hidden bg-nomad-paper font-sans text-nomad-ink antialiased before:fixed before:inset-0 before:z-[1] before:pointer-events-none before:opacity-[0.04] before:[content:''] before:bg-noise-grain before:bg-cover before:bg-center before:bg-no-repeat">
-    <div id="startupLoader" class="fixed inset-0 z-[9999] grid place-items-center bg-nomad-paper">
+    <div id="langSwitcher" class="invisible pointer-events-none fixed right-3 top-3 z-[10000] font-sans opacity-0 transition-opacity duration-300">
+      <button
+        id="langSwitcherBtn"
+        type="button"
+        class="flex h-11 w-11 items-center justify-center rounded border border-nomad-sea/30 bg-nomad-cream/95 text-xl shadow-[0_2px_0_0_rgba(51,51,68,0.12)] backdrop-blur-sm transition hover:border-nomad-sea/50 hover:bg-nomad-peach/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
+        aria-haspopup="listbox"
+        aria-expanded="false"
+        data-i18n-aria="lang.select"
+      >
+        <img
+          id="langSwitcherFlag"
+          src="./assets/flags/es.svg"
+          alt=""
+          width="28"
+          height="20"
+          class="h-5 w-7 rounded-sm object-cover shadow-sm ring-1 ring-black/10"
+          decoding="async"
+        />
+      </button>
+      <ul
+        id="langSwitcherMenu"
+        role="listbox"
+        class="absolute right-0 top-full mt-2 hidden min-w-[3.5rem] overflow-hidden rounded-md border border-black/10 bg-nomad-cream py-1 text-nomad-ink shadow-[0_4px_0_0_rgba(51,51,68,0.12)]"
+      >
+        <li>
+          <button
+            type="button"
+            role="option"
+            data-locale="es"
+            data-i18n-aria="lang.es_name"
+            class="flex w-full items-center justify-center px-3 py-2.5 transition hover:bg-nomad-ice/40"
+          >
+            <img
+              src="./assets/flags/es.svg"
+              alt=""
+              width="28"
+              height="20"
+              class="lang-flag-icon h-5 w-7 rounded-sm object-cover shadow-sm ring-1 ring-black/10"
+              decoding="async"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            role="option"
+            data-locale="en"
+            data-i18n-aria="lang.en_name"
+            class="flex w-full items-center justify-center px-3 py-2.5 transition hover:bg-nomad-ice/40"
+          >
+            <img
+              src="./assets/flags/en.svg"
+              alt=""
+              width="28"
+              height="20"
+              class="lang-flag-icon h-5 w-7 rounded-sm object-cover shadow-sm ring-1 ring-black/10"
+              decoding="async"
+            />
+          </button>
+        </li>
+      </ul>
+    </div>
+    <div
+      id="startupLoader"
+      class="fixed inset-0 z-[9999] grid place-items-center bg-nomad-paper"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <div class="flex flex-col items-center gap-3">
         <svg class="h-11 w-11 shrink-0 animate-loader-pulse text-nomad-sea" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <rect x="4" y="6" width="22" height="36" rx="2" stroke="currentColor" stroke-width="2.2" fill="none" transform="rotate(-8 15 24)" />
           <rect x="16" y="10" width="22" height="36" rx="2" stroke="currentColor" stroke-width="2.2" fill="rgba(107,123,145,0.12)" transform="rotate(6 27 28)" />
         </svg>
-        <p class="text-sm font-semibold tracking-[0.18em] text-nomad-deep">CARGANDO...</p>
+        <p id="startupLoaderText" class="text-sm font-semibold tracking-[0.18em] text-nomad-deep">...</p>
       </div>
     </div>
     <div id="appContent" class="invisible relative z-[2] opacity-0 transition-opacity duration-300">
@@ -136,9 +206,9 @@
     <main class="relative z-10 mx-auto max-w-6xl px-4 py-8 md:py-10 min-h-screen flex flex-col justify-center">
       <section id="step1" class="opacity-100 transition-opacity duration-300 ease-out">
         <h1 class="text-center font-ananda text-5xl font-normal normal-case leading-none tracking-normal text-white md:text-nomad-ink [font-synthesis:none] [text-rendering:optimizeLegibility] md:text-8xl">
-          El Tarot 
+          <span data-i18n="home.title_line1">El Tarot</span>
           <br>
-          de Anais
+          <span data-i18n="home.title_line2">de Anais</span>
         </h1>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <button
@@ -147,12 +217,12 @@
           >
             <video src="./assets/do-a-reading.mp4" class="w-20 md:w-40" muted loop playsinline preload="metadata"></video>
             <div class="flex flex-col gap-3">
-              <div class="text-lg font-semibold uppercase tracking-wide">Hazme una lectura</div>
+              <div class="text-lg font-semibold uppercase tracking-wide" data-i18n="home.random.title">Hazme una lectura</div>
               <ol class="list-decimal list-inside text-sm font-normal leading-snug flex flex-col gap-2">
-                <li>Saca cartas al azar</li>
-                <li>Comparte la tirada con tu tarotista</li>
-                <li>Ella te hará una lectura de cada carta</li>
-                <li>Y te compartirá el enlace de vuelta</li>
+                <li data-i18n="home.random.step1">Saca cartas al azar</li>
+                <li data-i18n="home.random.step2">Comparte la tirada con tu tarotista</li>
+                <li data-i18n="home.random.step3">Ella te hará una lectura de cada carta</li>
+                <li data-i18n="home.random.step4">Y te compartirá el enlace de vuelta</li>
               </ol>
             </div>
           </button>
@@ -162,14 +232,14 @@
           >
             <video src="./assets/i-got-cards.mp4" class="w-20 md:w-40" muted loop playsinline preload="metadata"></video>
             <div class="flex flex-col gap-3">
-              <div class="text-lg font-semibold uppercase tracking-wide">Tengo mis cartas</div>
-              <p class="font-normal leading-snug">
-                Tiraste con tu mazo en casa?
+              <div class="text-lg font-semibold uppercase tracking-wide" data-i18n="home.manual.title">Tengo mis cartas</div>
+              <p class="font-normal leading-snug" data-i18n="home.manual.intro">
+                ¿Tiraste con tu mazo en casa?
               </p>
               <ol class="list-decimal list-inside text-sm font-normal leading-snug flex flex-col gap-2">
-                <li>Marca las cartas que salieron</li>
-                <li>Agrega notas a cada carta</li>
-                <li>Comparte tu tirada</li>
+                <li data-i18n="home.manual.step1">Marca las cartas que salieron</li>
+                <li data-i18n="home.manual.step2">Agrega notas a cada carta</li>
+                <li data-i18n="home.manual.step3">Comparte tu tirada</li>
               </ol>
             </div>
           </button>
@@ -181,7 +251,7 @@
           id="randomDrawCountBlock"
           class="flex flex-col items-center p-4 text-center"
         >
-          <label for="drawCountInput" class="block w-full text-lg font-medium text-nomad-deep md:text-2xl">Cuantas cartas quieres sacar</label>
+          <label for="drawCountInput" class="block w-full text-lg font-medium text-nomad-deep md:text-2xl" data-i18n="draw.count_label">¿Cuántas cartas quieres sacar?</label>
           <div
             class="mt-2 flex w-full max-w-md shrink-0 self-center items-stretch rounded-full bg-nomad-cream px-0.5 py-0.5 shadow-inner"
           >
@@ -189,7 +259,7 @@
               type="button"
               id="drawCountDec"
               class="flex shrink-0 items-center justify-center rounded-full p-8 text-nomad-ink transition hover:bg-nomad-ice/50 active:bg-nomad-ice/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
-              aria-label="Menos cartas"
+              data-i18n-aria="aria.fewer_cards"
             >
               <svg class="h-9 w-9 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6l-6 6 6 6" /></svg>
             </button>
@@ -206,20 +276,20 @@
               type="button"
               id="drawCountInc"
               class="flex shrink-0 items-center justify-center rounded-full p-8 text-nomad-ink transition hover:bg-nomad-ice/50 active:bg-nomad-ice/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
-              aria-label="Mas cartas"
+              data-i18n-aria="aria.more_cards"
             >
               <svg class="h-9 w-9 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6l6 6-6 6" /></svg>
             </button>
           </div>
           <div id="deckModeToggleSlotRandom" class="mt-4 flex w-full max-w-md justify-center self-center">
             <label id="deckModeToggleWrap" class="flex shrink-0 cursor-pointer items-center gap-2 text-left text-sm sm:gap-3">
-              <span class="leading-snug font-semibold">Solo Arcanos Mayores</span>
+              <span class="leading-snug font-semibold" data-i18n="draw.major_only">Solo Arcanos Mayores</span>
               <div class="relative flex shrink-0 items-center gap-1">
                 <input
                   id="deckModeToggle"
                   type="checkbox"
                   class="peer absolute inset-0 cursor-pointer opacity-0 disabled:pointer-events-none disabled:cursor-not-allowed"
-                  aria-label="Solo arcanos mayores"
+                  data-i18n-aria="aria.major_only"
                 />
                 <span
                   class="flex h-[24px] w-[40px] rounded-full border bg-nomad-mist/80 p-[1px] transition-all duration-500 peer-checked:justify-end peer-checked:bg-nomad-mint"
@@ -233,11 +303,12 @@
         </div>
 
         <div id="manualConfig" class="mt-5 hidden rounded-md bg-nomad-cream/95 p-4">
-          <p id="manualHelper" class="text-lg text-nomad-deep/95 sm:text-xl">Selecciona cartas del listado.</p>
+          <p id="manualHelper" class="text-lg text-nomad-deep/95 sm:text-xl" data-i18n="manual.helper_select">Selecciona cartas del listado.</p>
           <div class="mt-3 flex min-w-0 flex-row items-center gap-3">
             <input
               id="manualSearchInput"
               type="text"
+              data-i18n-placeholder="search.placeholder"
               placeholder="Buscar carta..."
               class="min-w-0 flex-1 rounded-md bg-white px-3 py-2 text-nomad-ink outline-none ring-nomad-sea transition focus:ring-2 focus:ring-nomad-sea"
             />
@@ -250,12 +321,13 @@
         </div>
 
         <div class="mx-auto mt-6 flex w-full max-w-md justify-center gap-3">
-          <button id="backToModeBtn" class="rounded-md bg-white px-4 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40">
+          <button id="backToModeBtn" class="rounded-md bg-white px-4 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40" data-i18n="draw.back">
             Volver
           </button>
           <button
             id="toAnimationBtn"
             class="min-w-0 flex-1 rounded-md bg-nomad-sage px-4 py-2 text-center font-semibold text-white transition hover:bg-nomad-deep"
+            data-i18n="draw.draw_cards"
           >
             Sacar cartas
           </button>
@@ -270,19 +342,20 @@
           class="pointer-events-none absolute inset-0 z-0 bg-tarot-spread"
           aria-hidden="true"
         ></div>
-        <div class="absolute right-4 top-4 z-20 flex items-center gap-2 pr-3">
+        <div class="absolute right-4 top-16 z-20 flex items-center gap-2 pr-3 md:top-4 md:pr-14">
           <button
             id="resetSessionBtn"
             type="button"
             class="rounded-md bg-nomad-cream px-4 py-2 text-sm font-semibold text-nomad-deep transition hover:bg-nomad-peach"
+            data-i18n="draw.new_reading"
           >
             Nueva tirada
           </button>
           <button
             id="shareLinkBtn"
             type="button"
-            aria-label="Copiar URL"
-            title="Copiar URL"
+            data-i18n-aria="aria.copy_url"
+            data-i18n-title="aria.copy_url"
             class="flex items-center justify-center rounded-md bg-nomad-sea px-4 py-2 text-white transition hover:bg-nomad-deep"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
@@ -310,7 +383,7 @@
 
     <div id="drawModal" class="fixed inset-0 z-50 hidden grid place-items-center bg-nomad-ink/40 px-3 py-3 sm:px-4">
       <div class="w-full max-w-[min(22rem,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-md bg-nomad-cream p-4 shadow-none sm:max-w-sm sm:p-5">
-        <h3 class="text-base font-bold text-nomad-deep sm:text-3xl">Cuantas cartas quieres sacar</h3>
+        <h3 class="text-base font-bold text-nomad-deep sm:text-3xl" data-i18n="draw.count_label">¿Cuántas cartas quieres sacar?</h3>
         <div
           class="mt-4 flex w-full items-stretch rounded-full bg-gray-200 px-0.5 py-0.5 shadow-inner"
         >
@@ -318,7 +391,7 @@
             type="button"
             id="modalDrawCountDec"
             class="flex shrink-0 items-center justify-center rounded-full p-5 text-nomad-ink transition hover:bg-nomad-ice/50 active:bg-nomad-ice/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep sm:p-8"
-            aria-label="Menos cartas"
+            data-i18n-aria="aria.fewer_cards"
           >
             <svg class="h-8 w-8 shrink-0 sm:h-10 sm:w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6l-6 6 6 6" /></svg>
           </button>
@@ -328,23 +401,23 @@
             min="1"
             value="3"
             inputmode="numeric"
-            aria-label="Cantidad de cartas a sacar"
+            data-i18n-aria="aria.draw_count"
             class="min-w-0 flex-1 border-0 bg-transparent py-2 text-center text-5xl font-bold tabular-nums text-nomad-sea outline-none ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none focus:ring-0 sm:text-7xl"
           />
           <button
             type="button"
             id="modalDrawCountInc"
             class="flex shrink-0 items-center justify-center rounded-full p-5 text-nomad-ink transition hover:bg-nomad-ice/50 active:bg-nomad-ice/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep sm:p-8"
-            aria-label="Mas cartas"
+            data-i18n-aria="aria.more_cards"
           >
             <svg class="h-8 w-8 shrink-0 sm:h-10 sm:w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6l6 6-6 6" /></svg>
           </button>
         </div>
         <div class="mt-4 flex gap-3">
-          <button id="modalCancelBtn" class="flex-1 rounded-md bg-transparent px-3 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40">
+          <button id="modalCancelBtn" class="flex-1 rounded-md bg-transparent px-3 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40" data-i18n="draw.cancel">
             Cancelar
           </button>
-          <button id="modalConfirmBtn" class="flex-1 rounded-md bg-nomad-sage px-3 py-2 font-semibold text-white transition hover:bg-nomad-deep">
+          <button id="modalConfirmBtn" class="flex-1 rounded-md bg-nomad-sage px-3 py-2 font-semibold text-white transition hover:bg-nomad-deep" data-i18n="draw.draw">
             Sacar
           </button>
         </div>
@@ -355,11 +428,12 @@
       <div
         class="flex max-h-[min(90vh,720px)] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-nomad-cream p-4 shadow-none sm:p-5"
       >
-        <h3 class="text-lg font-bold uppercase tracking-wide text-nomad-deep">Que cartas salieron en esta tirada</h3>
+        <h3 class="text-lg font-bold uppercase tracking-wide text-nomad-deep" data-i18n="draw.which_cards">¿Qué cartas salieron en esta tirada?</h3>
         <p id="manualPickModalHelp" class="mt-2 text-sm text-nomad-deep/85"></p>
         <input
           id="manualPickSearchInput"
           type="text"
+          data-i18n-placeholder="search.placeholder"
           placeholder="Buscar carta..."
           class="mt-3 w-full rounded-md bg-white px-3 py-2 text-nomad-ink outline-none ring-nomad-sea transition focus:ring-2 focus:ring-nomad-sea"
         />
@@ -373,6 +447,7 @@
             id="manualPickCancelBtn"
             type="button"
             class="flex-1 rounded-md bg-transparent px-3 py-2 text-nomad-ink transition hover:bg-nomad-dusk/40"
+            data-i18n="draw.cancel"
           >
             Cancelar
           </button>
@@ -380,6 +455,7 @@
             id="manualPickConfirmBtn"
             type="button"
             class="flex-1 rounded-md bg-nomad-sage px-3 py-2 font-semibold text-white transition hover:bg-nomad-deep"
+            data-i18n="draw.confirm_reading"
           >
             Confirmar tirada
           </button>
@@ -402,7 +478,7 @@
       <button
         id="cardDetailCloseBtn"
         type="button"
-        aria-label="Cerrar"
+        data-i18n-aria="aria.close"
         class="absolute right-4 top-4 z-[3] flex h-10 w-10 items-center justify-center rounded-md bg-transparent text-nomad-ink transition hover:bg-black/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep sm:right-6 sm:top-6"
       >
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -449,6 +525,7 @@
               <textarea
                 id="cardDetailNotes"
                 rows="5"
+                data-i18n-placeholder="notes.placeholder"
                 placeholder="Agrega tu interpretación..."
                 class="w-full resize-y rounded-md border border-black bg-nomad-cream px-3 py-2 text-base text-nomad-ink"
               ></textarea>
@@ -456,7 +533,7 @@
                 id="cardDetailNotesMessage"
                 class="hidden w-full"
                 role="region"
-                aria-label="Interpretación del tarotista"
+                data-i18n-aria="aria.interpretation"
               >
                 <div class="flex items-start gap-2.5">
                   <div class="relative shrink-0 pt-1">
@@ -464,7 +541,7 @@
                       id="cardDetailNotesInfoBtn"
                       type="button"
                       class="flex h-8 w-8 items-center justify-center rounded-full border border-nomad-sea/30 bg-nomad-cream text-nomad-deep transition hover:border-nomad-sea/50 hover:bg-nomad-peach/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
-                      aria-label="Información sobre esta interpretación"
+                      data-i18n-aria="aria.interpretation_info"
                       aria-describedby="cardDetailNotesInfoTooltip"
                     >
                       <svg
@@ -487,7 +564,7 @@
                       role="tooltip"
                       class="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-52 rounded-md border border-black/10 bg-nomad-cream px-3 py-2 text-left text-sm leading-snug text-nomad-ink shadow-[0_2px_0_0_rgba(0,0,0,0.85)]"
                     >
-                      Esta es la lectura de tu tarotista.
+                      <span data-i18n="notes.tarotist_tooltip">Esta es la lectura de tu tarotista.</span>
                     </div>
                   </div>
                   <div
@@ -501,7 +578,7 @@
                       id="cardDetailNotesMessageEmpty"
                       class="relative z-[1] hidden text-nomad-ink/55 italic"
                     >
-                      Tu tarotista no dejó notas para esta carta.
+                      <span data-i18n="notes.empty">Tu tarotista no dejó notas para esta carta.</span>
                     </p>
                   </div>
                 </div>
@@ -518,6 +595,11 @@
       const ANIMATED_IMAGE_BASE_URL = "https://kamiareo.com/wp-content/uploads/2023/12";
       const TAROT_API_ES_URL = "https://tarot-api-es.vercel.app/api/v1/cards";
       const TAROT_API_EN_FALLBACK_URL = "https://tarotapi.dev/api/v1/cards";
+
+      function t(key, vars) {
+        if (typeof I18n !== "undefined" && I18n.ready) return I18n.t(key, vars);
+        return key;
+      }
       const TAROT_CARD_BACK_SRC = "./assets/card-back.jpg";
       const TAROT_CARD_BACK_IMG_CLASS =
         "block h-full w-full object-cover object-center scale-[1.06] [transform-origin:center]";
@@ -530,7 +612,7 @@
       ];
       const CARD_FACE_PRINT_ROOT_TW = "[container-type:size] [container-name:cardface]";
       const CARD_PRINTED_TITLE_BAR_CLASS =
-        "absolute inset-x-0 bottom-0 z-[2] box-border flex h-[16.666667%] items-center justify-center overflow-hidden px-1 pb-2 pt-0.5 text-center pointer-events-none bg-[radial-gradient(ellipse_130%_90%_at_50%_35%,rgba(255,255,255,0.5)_0%,transparent_52%),radial-gradient(circle_at_20%_70%,rgba(169,198,224,0.2)_0%,transparent_45%),linear-gradient(180deg,rgba(232,209,209,0.12)_0%,transparent_42%)] font-serif font-medium uppercase leading-none antialiased tracking-[-0.5px] text-[#333344] [font-size:clamp(0.55rem,6.4cqh,1.2rem)] [text-rendering:optimizeLegibility]";
+        "absolute inset-x-0 bottom-0 z-[2] box-border flex h-[16.666667%] items-center justify-center overflow-hidden px-1 pb-2 pt-0.5 text-center pointer-events-none bg-[radial-gradient(ellipse_130%_90%_at_50%_35%,rgba(255,255,255,0.5)_0%,transparent_52%),radial-gradient(circle_at_20%_70%,rgba(169,198,224,0.2)_0%,transparent_45%),linear-gradient(180deg,rgba(232,209,209,0.12)_0%,transparent_42%)] font-serif font-medium uppercase leading-none antialiased tracking-[-0.5px] text-[#333344] [font-size:clamp(0.55rem,6.4cqh,2rem)] [text-rendering:optimizeLegibility]";
       const CARD_PRINTED_TITLE_TEXT_CLASS = "inline-block whitespace-nowrap [transform-origin:center]";
       const MAJOR_ARCANA = [
         "El Loco",
@@ -932,7 +1014,7 @@
           hideCardDetailTarotistInfoTooltip();
         }
         if (shareLinkBtn) {
-          const shareLabel = canEdit ? "Copiar URL" : "Copiar enlace de esta tirada";
+          const shareLabel = canEdit ? t("aria.copy_url") : t("aria.copy_reading_link");
           shareLinkBtn.title = shareLabel;
           shareLinkBtn.setAttribute("aria-label", shareLabel);
         }
@@ -989,19 +1071,41 @@
         };
       }
 
+      function localizedMajors() {
+        const fromI18n = typeof I18n !== "undefined" ? I18n.tArray("cards.majors") : [];
+        return fromI18n.length === 22 ? fromI18n : MAJOR_ARCANA;
+      }
+
+      function localizedRanks() {
+        const fromI18n = typeof I18n !== "undefined" ? I18n.tArray("cards.ranks") : [];
+        return fromI18n.length === 14 ? fromI18n : RANKS;
+      }
+
+      function localizedSuitName(code) {
+        const suits = typeof I18n !== "undefined" ? I18n.tObject("cards.suits") : {};
+        const fallback = { w: "Bastos", c: "Copas", s: "Espadas", p: "Oros" };
+        return suits[code] || fallback[code] || code;
+      }
+
+      function localizedMinorCardName(rank, suitCode) {
+        return t("cards.minor_of", { rank, suit: localizedSuitName(suitCode) });
+      }
+
       function buildDeck(mode) {
         const onlyMajor = mode === "major";
         const deck = [];
-        MAJOR_ARCANA.forEach((name, index) => {
+        const majors = localizedMajors();
+        majors.forEach((name, index) => {
           const code = `m${String(index).padStart(2, "0")}`;
           deck.push(buildCard(code, name, `${code}.jpg`));
         });
         if (!onlyMajor) {
+          const ranks = localizedRanks();
           for (const suit of SUITS) {
-            RANKS.forEach((rank, index) => {
+            ranks.forEach((rank, index) => {
               const number = String(index + 1).padStart(2, "0");
               const code = `${suit.code}${number}`;
-              deck.push(buildCard(code, `${rank} de ${suit.name}`, `${code}.jpg`));
+              deck.push(buildCard(code, localizedMinorCardName(rank, suit.code), `${code}.jpg`));
             });
           }
         }
@@ -1040,10 +1144,15 @@
         return n;
       }
 
+      function manualSearchExtrasForRank(r) {
+        const fromI18n = typeof I18n !== "undefined" ? I18n.tObject("search_extras") : {};
+        return fromI18n[String(r)] || MANUAL_SEARCH_MINOR_RANK_EXTRAS[r] || "";
+      }
+
       function manualCardSearchHaystack(card) {
         const base = card.name.toLowerCase();
         const r = manualMinorPipsRankFromId(card.id);
-        const extras = r != null ? MANUAL_SEARCH_MINOR_RANK_EXTRAS[r] : "";
+        const extras = r != null ? manualSearchExtrasForRank(r) : "";
         return extras ? `${base} ${extras}` : base;
       }
 
@@ -1081,7 +1190,7 @@
       function removeCardIdentityTerms(text) {
         if (!text) return "";
         let cleaned = String(text);
-        const escapedMajors = MAJOR_ARCANA.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        const escapedMajors = localizedMajors().map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
         if (escapedMajors.length > 0) {
           cleaned = cleaned.replace(new RegExp(`\\b(?:${escapedMajors.join("|")})\\b`, "gi"), "");
         }
@@ -1503,21 +1612,29 @@
         return map;
       }
 
+      function resetTarotMeaningsCache() {
+        meaningsByShort = null;
+        meaningsFetchPromise = null;
+      }
+
       function ensureTarotMeaningsLoaded() {
         if (meaningsByShort) return Promise.resolve(meaningsByShort);
         if (!meaningsFetchPromise) {
-          meaningsFetchPromise = fetch(TAROT_API_ES_URL)
+          const locale = typeof I18n !== "undefined" ? I18n.locale : "es";
+          const primaryUrl = locale === "en" ? TAROT_API_EN_FALLBACK_URL : TAROT_API_ES_URL;
+          const fallbackUrl = locale === "en" ? TAROT_API_ES_URL : TAROT_API_EN_FALLBACK_URL;
+          meaningsFetchPromise = fetch(primaryUrl)
             .then((res) => {
-              if (!res.ok) throw new Error("ES API unavailable");
+              if (!res.ok) throw new Error("Primary API unavailable");
               return res.json();
             })
             .then((payload) => {
               meaningsByShort = fillMeaningsMapFromPayload(payload);
-              if (meaningsByShort.size === 0) throw new Error("No Spanish meanings");
+              if (meaningsByShort.size === 0) throw new Error("No meanings");
               return meaningsByShort;
             })
             .catch(() =>
-              fetch(TAROT_API_EN_FALLBACK_URL)
+              fetch(fallbackUrl)
                 .then((res) => res.json())
                 .then((payload) => {
                   meaningsByShort = fillMeaningsMapFromPayload(payload);
@@ -1533,8 +1650,7 @@
       }
 
       function blurbMeaning(raw, maxLen) {
-        if (!raw)
-          return "No hay texto de referencia cargado en este momento. Conexion para significados Rider-Waite en español o ingles pendiente.";
+        if (!raw) return t("meanings.unavailable");
         const normalized = raw.trim();
         if (!maxLen || normalized.length <= maxLen) return normalized;
         return normalized.slice(0, maxLen).trim();
@@ -1574,8 +1690,8 @@
       }
 
       let deckMode = "full";
-      let fullDeck = buildDeck(deckMode);
-      let remainingDeck = [...fullDeck];
+      let fullDeck = [];
+      let remainingDeck = [];
       let currentMode = null;
       let manualSelected = new Set();
       let animating = false;
@@ -1648,14 +1764,9 @@
       }
 
       function hideStartupLoader() {
-        if (appContent) {
-          appContent.classList.remove("invisible", "opacity-0");
-          appContent.classList.add("opacity-100");
+        if (typeof TarotStartup !== "undefined") {
+          TarotStartup.finish();
         }
-        if (startupLoader) {
-          startupLoader.classList.add("hidden");
-        }
-        document.body.classList.remove("overflow-hidden");
       }
 
       function bindQuantityStepper(inputId, decId, incId) {
@@ -2192,7 +2303,7 @@
 
       function refreshManualPickSelectionLabel() {
         const n = manualDeckPickSelections.size;
-        manualPickModalCount.textContent = `Seleccionadas: ${n}`;
+        manualPickModalCount.textContent = t("manual.selected_count", { n });
       }
 
       animationStage.addEventListener(
@@ -2459,9 +2570,8 @@
       function setManualHelper() {
         const n = manualSelected.size;
         manualHelper.textContent =
-          n < 1
-            ? "Elige tus cartas"
-            : `Listas para la tirada: ${n} carta(s). Pulsa cuando quieras pasar a la mesa.`;
+          n < 1 ? t("manual.helper_choose") : t("manual.helper_ready", { n });
+        manualHelper.removeAttribute("data-i18n");
         toAnimationBtn.disabled = n < 1;
         toAnimationBtn.classList.toggle("opacity-70", toAnimationBtn.disabled);
         toAnimationBtn.classList.toggle("cursor-not-allowed", toAnimationBtn.disabled);
@@ -2478,7 +2588,7 @@
         manualCardList.innerHTML = "";
 
         if (filtered.length === 0) {
-          manualCardList.innerHTML = '<p class="text-sm text-nomad-deep/80">No hay cartas para ese filtro.</p>';
+          manualCardList.innerHTML = `<p class="text-sm text-nomad-deep/80">${escapeHtml(t("manual.no_filter_match"))}</p>`;
           return;
         }
 
@@ -2504,8 +2614,9 @@
         refreshManualPickSelectionLabel();
 
         if (filtered.length === 0) {
-          manualPickModalGrid.innerHTML =
-            '<p class="col-span-full text-sm text-nomad-deep/80">No hay cartas para ese filtro.</p>';
+          manualPickModalGrid.innerHTML = `<p class="col-span-full text-sm text-nomad-deep/80">${escapeHtml(
+            t("manual.no_filter_match")
+          )}</p>`;
           return;
         }
 
@@ -2533,8 +2644,7 @@
 
       async function openManualPickModal() {
         manualDeckPickSelections = new Set();
-        manualPickModalHelp.textContent =
-          "Marca las cartas que salieron en esta tirada. Cuántas más elijas, más cartas revelará esta ronda y del mazo saldrá ese mismo número.";
+        manualPickModalHelp.textContent = t("manual.pick_help");
         manualPickSearchInput.value = "";
         refreshManualPickSelectionLabel();
         manualPickModal.classList.remove("hidden");
@@ -2573,14 +2683,14 @@
         if (currentMode === "random") {
           const count = readCount();
           if (!count) {
-            alert("Ingresa una cantidad valida de cartas.");
+            alert(t("alerts.invalid_count"));
             return null;
           }
           return shuffle([...remainingDeck]).slice(0, count);
         }
 
         if (manualSelected.size < 1) {
-          alert("Selecciona al menos una carta.");
+          alert(t("alerts.select_one_card"));
           return null;
         }
         return [...manualSelected].map((id) => remainingDeck.find((card) => card.id === id)).filter(Boolean);
@@ -2746,7 +2856,7 @@
         await revealSelectedCards(selected);
 
         if (remainingDeck.length === 0) {
-          alert("Se acabaron las cartas del mazo.");
+          alert(t("alerts.deck_empty"));
         }
       }
 
@@ -3081,15 +3191,13 @@
           if (!uploaded) {
             if (shareLinkBtn) {
               const originalHTML = shareLinkBtn.innerHTML;
-              shareLinkBtn.textContent = "Sin conexion";
+              shareLinkBtn.textContent = t("share.offline");
               window.setTimeout(() => {
                 shareLinkBtn.innerHTML = originalHTML;
                 shareLinkBtn.disabled = false;
               }, 1800);
             }
-            alert(
-              "No se pudo guardar la tirada en el servidor. Revisa tu conexion e intenta de nuevo. No se ha copiado ningun enlace para no exponer tus notas."
-            );
+            alert(t("share.save_failed"));
             return;
           }
         }
@@ -3116,7 +3224,7 @@
         }
         if (shareLinkBtn) {
           const originalHTML = shareLinkBtn.innerHTML;
-          shareLinkBtn.textContent = copied ? "Copiado!" : "No se pudo copiar";
+          shareLinkBtn.textContent = copied ? t("share.copied") : t("share.copy_failed");
           shareLinkBtn.disabled = true;
           window.setTimeout(() => {
             shareLinkBtn.innerHTML = originalHTML;
@@ -3154,14 +3262,14 @@
         if (animating) return;
         const count = Number(modalDrawCountInput.value);
         if (!Number.isInteger(count) || count < 1 || count > remainingDeck.length) {
-          alert("Cantidad invalida.");
+          alert(t("alerts.invalid_amount"));
           return;
         }
         closeDrawModal();
         const selected = shuffle([...remainingDeck]).slice(0, count);
         await revealSelectedCards(selected);
         if (remainingDeck.length === 0) {
-          alert("Se acabaron las cartas del mazo.");
+          alert(t("alerts.deck_empty"));
         }
       }
 
@@ -3197,7 +3305,7 @@
       resetSessionBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         if (revealedRounds.length > 0) {
-          if (!window.confirm("¿Empezar una nueva tirada? Se perderan las cartas actuales.")) return;
+          if (!window.confirm(t("alerts.new_reading_confirm"))) return;
         }
         resetSession();
       });
@@ -3224,14 +3332,14 @@
         void (async () => {
           if (animating) return;
           if (manualDeckPickSelections.size < 1) {
-            alert("Selecciona al menos una carta.");
+            alert(t("alerts.select_one_card"));
             return;
           }
           const selected = [...manualDeckPickSelections]
             .map((id) => remainingDeck.find((c) => c.id === id))
             .filter(Boolean);
           if (selected.length < 1) {
-            alert("Seleccion invalida.");
+            alert(t("alerts.invalid_selection"));
             return;
           }
           manualPickModal.classList.add("hidden");
@@ -3239,7 +3347,7 @@
           manualPickModalGrid.innerHTML = "";
           await revealSelectedCards(selected);
           if (remainingDeck.length === 0) {
-            alert("Se acabaron las cartas del mazo.");
+            alert(t("alerts.deck_empty"));
           }
         })();
       });
@@ -3351,7 +3459,35 @@
       bindQuantityStepper("drawCountInput", "drawCountDec", "drawCountInc");
       bindQuantityStepper("modalDrawCountInput", "modalDrawCountDec", "modalDrawCountInc");
 
+      function remapDeckCardsById(ids) {
+        const byId = new Map(fullDeck.map((card) => [card.id, card]));
+        return ids.map((id) => byId.get(id)).filter(Boolean);
+      }
+
+      function syncDeckForLocale() {
+        const remainingIds = remainingDeck.map((card) => card.id);
+        const selectedManual = new Set(manualSelected);
+        const roundsSnapshot = revealedRounds.map((round) => round.map((card) => card.id));
+        applyDeckMode(deckMode);
+        remainingDeck = remapDeckCardsById(remainingIds);
+        revealedRounds = roundsSnapshot.map((ids) => remapDeckCardsById(ids));
+        manualSelected = new Set([...selectedManual].filter((id) => fullDeck.some((c) => c.id === id)));
+        if (currentMode === "manual" && step2 && !step2.classList.contains("hidden")) {
+          renderManualList();
+          setManualHelper();
+        }
+        renderDeckPile();
+        scheduleFitAllCardPrintedTitleBars();
+      }
+
       void (async () => {
+        await TarotStartup.ready();
+        I18n.onChange(() => {
+          resetTarotMeaningsCache();
+          syncDeckForLocale();
+          applyCardNotesEditingPermissions();
+        });
+
         const shareCodeFromUrl = readShareCodeFromUrl();
         let sharedReading = null;
         if (shareCodeFromUrl) {

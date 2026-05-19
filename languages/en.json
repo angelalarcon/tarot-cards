@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "title": "Anais's Tarot",
+    "html_lang": "en"
+  },
+  "loading": "LOADING...",
+  "lang": {
+    "select": "Language",
+    "es_name": "Español",
+    "en_name": "English"
+  },
+  "home": {
+    "title_line1": "Anais's",
+    "title_line2": "Tarot",
+    "random": {
+      "title": "Do a reading for me",
+      "step1": "Draw cards at random",
+      "step2": "Share the spread with your reader",
+      "step3": "They will interpret each card",
+      "step4": "And send you the link back"
+    },
+    "manual": {
+      "title": "I have my cards",
+      "intro": "Did you read with your deck at home?",
+      "step1": "Mark the cards that came up",
+      "step2": "Add notes to each card",
+      "step3": "Share your spread"
+    }
+  },
+  "draw": {
+    "count_label": "How many cards do you want to draw?",
+    "major_only": "Major Arcana only",
+    "back": "Back",
+    "draw_cards": "Draw cards",
+    "cancel": "Cancel",
+    "draw": "Draw",
+    "new_reading": "New reading",
+    "which_cards": "Which cards came up in this spread?",
+    "confirm_reading": "Confirm spread"
+  },
+  "search": {
+    "placeholder": "Search card..."
+  },
+  "aria": {
+    "fewer_cards": "Fewer cards",
+    "more_cards": "More cards",
+    "major_only": "Major arcana only",
+    "draw_count": "Number of cards to draw",
+    "copy_url": "Copy URL",
+    "copy_reading_link": "Copy link to this reading",
+    "close": "Close",
+    "interpretation": "Reader's interpretation",
+    "interpretation_info": "About this interpretation"
+  },
+  "notes": {
+    "placeholder": "Add your interpretation...",
+    "tarotist_tooltip": "This is your reader's interpretation.",
+    "empty": "Your reader left no notes for this card."
+  },
+  "manual": {
+    "helper_select": "Select cards from the list.",
+    "helper_choose": "Choose your cards",
+    "helper_ready": "Ready for the spread: {{n}} card(s). Tap when you want to go to the table.",
+    "pick_help": "Mark the cards that came up in this spread. The more you choose, the more cards this round will reveal and the same number will leave the deck.",
+    "selected_count": "Selected: {{n}}",
+    "no_filter_match": "No cards match that filter."
+  },
+  "share": {
+    "offline": "Offline",
+    "copied": "Copied!",
+    "copy_failed": "Could not copy",
+    "save_failed": "Could not save the reading on the server. Check your connection and try again. No link was copied to avoid exposing your notes."
+  },
+  "alerts": {
+    "invalid_count": "Enter a valid number of cards.",
+    "select_one_card": "Select at least one card.",
+    "deck_empty": "There are no cards left in the deck.",
+    "invalid_amount": "Invalid amount.",
+    "invalid_selection": "Invalid selection.",
+    "new_reading_confirm": "Start a new reading? Current cards will be lost."
+  },
+  "meanings": {
+    "unavailable": "No reference text is loaded right now. Rider-Waite meanings in Spanish or English are pending connection."
+  },
+  "cards": {
+    "majors": [
+      "The Fool",
+      "The Magician",
+      "The High Priestess",
+      "The Empress",
+      "The Emperor",
+      "The Hierophant",
+      "The Lovers",
+      "The Chariot",
+      "Strength",
+      "The Hermit",
+      "Wheel of Fortune",
+      "Justice",
+      "The Hanged Man",
+      "Death",
+      "Temperance",
+      "The Devil",
+      "The Tower",
+      "The Star",
+      "The Moon",
+      "The Sun",
+      "Judgement",
+      "The World"
+    ],
+    "suits": {
+      "w": "Wands",
+      "c": "Cups",
+      "s": "Swords",
+      "p": "Pentacles"
+    },
+    "ranks": [
+      "Ace",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Page",
+      "Knight",
+      "Queen",
+      "King"
+    ],
+    "minor_of": "{{rank}} of {{suit}}"
+  },
+  "search_extras": {
+    "1": "ace one 1",
+    "2": "two 2",
+    "3": "three 3",
+    "4": "four 4",
+    "5": "five 5",
+    "6": "six 6",
+    "7": "seven 7",
+    "8": "eight 8",
+    "9": "nine 9",
+    "10": "ten 10"
+  }
+}
