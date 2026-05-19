@@ -735,6 +735,7 @@
       const SHARE_CODE_URL_PARAM = "c";
       const SHARE_CODE_LENGTH = 10;
       const SHARE_CODE_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+      const READING_OWNER_SESSION_KEY = "tarot:ownedShareCodes";
 
       const supabaseClient =
         typeof window !== "undefined" &&
@@ -786,6 +787,68 @@
           }
           window.history.replaceState(null, "", url.toString());
         } catch (_) {}
+      }
+
+      function readOwnedShareCodesFromSession() {
+        try {
+          const raw = window.sessionStorage.getItem(READING_OWNER_SESSION_KEY);
+          if (!raw) return new Set();
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return new Set();
+          return new Set(
+            parsed.filter((code) => typeof code === "string" && /^[0-9a-z]{6,16}$/i.test(code)).map((c) => c.toLowerCase())
+          );
+        } catch (_) {
+          return new Set();
+        }
+      }
+
+      function writeOwnedShareCodesToSession(codes) {
+        try {
+          if (!codes || codes.size === 0) {
+            window.sessionStorage.removeItem(READING_OWNER_SESSION_KEY);
+            return;
+          }
+          window.sessionStorage.setItem(READING_OWNER_SESSION_KEY, JSON.stringify([...codes]));
+        } catch (_) {}
+      }
+
+      function markShareCodeAsOwned(code) {
+        const normalized = typeof code === "string" ? code.toLowerCase() : "";
+        if (!normalized) return;
+        const owned = readOwnedShareCodesFromSession();
+        if (owned.has(normalized)) return;
+        owned.add(normalized);
+        writeOwnedShareCodesToSession(owned);
+      }
+
+      function isShareCodeOwnedBySession(code) {
+        const normalized = typeof code === "string" ? code.toLowerCase() : "";
+        if (!normalized) return false;
+        return readOwnedShareCodesFromSession().has(normalized);
+      }
+
+      function canEditCardInterpretations() {
+        if (!currentShareCode) return true;
+        return isShareCodeOwnedBySession(currentShareCode);
+      }
+
+      function applyCardNotesEditingPermissions() {
+        const canEdit = canEditCardInterpretations();
+        if (cardDetailNotes) {
+          cardDetailNotes.readOnly = !canEdit;
+          cardDetailNotes.setAttribute("aria-readonly", canEdit ? "false" : "true");
+          cardDetailNotes.placeholder = canEdit
+            ? "Agrega tu interpretación..."
+            : "Interpretación compartida (solo lectura)";
+          cardDetailNotes.classList.toggle("cursor-not-allowed", !canEdit);
+          cardDetailNotes.classList.toggle("bg-nomad-paper/80", !canEdit);
+        }
+        if (shareLinkBtn) {
+          const shareLabel = canEdit ? "Copiar URL" : "Copiar enlace de esta tirada";
+          shareLinkBtn.title = shareLabel;
+          shareLinkBtn.setAttribute("aria-label", shareLabel);
+        }
       }
 
       function cardNotesToObject() {
@@ -1789,6 +1852,7 @@
       }
 
       function persistCardNotes() {
+        if (!canEditCardInterpretations()) return;
         if (persistCardNotesTimer) {
           window.clearTimeout(persistCardNotesTimer);
           persistCardNotesTimer = 0;
@@ -1893,7 +1957,12 @@
 
       function openCardDetailModal(card, options) {
         if (!card) return;
-        if (activeCardDetailCardId && activeCardDetailCardId !== card.id) {
+        applyCardNotesEditingPermissions();
+        if (
+          canEditCardInterpretations() &&
+          activeCardDetailCardId &&
+          activeCardDetailCardId !== card.id
+        ) {
           cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
         }
         activeCardDetailCardId = card.id;
@@ -1929,7 +1998,7 @@
 
       function closeCardDetailModal() {
         if (cardDetailModal.classList.contains("hidden")) return;
-        if (activeCardDetailCardId) {
+        if (activeCardDetailCardId && canEditCardInterpretations()) {
           cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
         }
         activeCardDetailCardId = null;
@@ -1971,6 +2040,7 @@
         closeCardDetailModal();
       });
       cardDetailNotes.addEventListener("input", () => {
+        if (!canEditCardInterpretations()) return;
         if (activeCardDetailCardId) {
           cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
           persistCardNotesDebounced();
@@ -2849,6 +2919,7 @@
 
       async function persistSessionToSupabase() {
         if (!supabaseClient) return false;
+        if (currentShareCode && !canEditCardInterpretations()) return false;
         const sessionEncoded = encodeRevealedRounds(revealedRounds);
         const notesObj = cardNotesToObject();
         const payload = {
@@ -2867,6 +2938,8 @@
               console.warn("Supabase update failed", error);
               return false;
             }
+            markShareCodeAsOwned(currentShareCode);
+            applyCardNotesEditingPermissions();
             return true;
           } catch (err) {
             console.warn("Supabase update exception", err);
@@ -2883,6 +2956,8 @@
             if (!error) {
               currentShareCode = code;
               writeShareCodeToUrl(code);
+              markShareCodeAsOwned(code);
+              applyCardNotesEditingPermissions();
               return true;
             }
             if (error && (error.code === "23505" || /duplicate key/i.test(error.message || ""))) {
@@ -2899,23 +2974,28 @@
       }
 
       async function copyShareLinkToClipboard() {
-        persistCardNotes();
+        const canEdit = canEditCardInterpretations();
+        if (canEdit) {
+          persistCardNotes();
+        }
         if (shareLinkBtn) shareLinkBtn.disabled = true;
-        const uploaded = await persistSessionToSupabase();
 
-        if (!uploaded) {
-          if (shareLinkBtn) {
-            const originalHTML = shareLinkBtn.innerHTML;
-            shareLinkBtn.textContent = "Sin conexion";
-            window.setTimeout(() => {
-              shareLinkBtn.innerHTML = originalHTML;
-              shareLinkBtn.disabled = false;
-            }, 1800);
+        if (canEdit) {
+          const uploaded = await persistSessionToSupabase();
+          if (!uploaded) {
+            if (shareLinkBtn) {
+              const originalHTML = shareLinkBtn.innerHTML;
+              shareLinkBtn.textContent = "Sin conexion";
+              window.setTimeout(() => {
+                shareLinkBtn.innerHTML = originalHTML;
+                shareLinkBtn.disabled = false;
+              }, 1800);
+            }
+            alert(
+              "No se pudo guardar la tirada en el servidor. Revisa tu conexion e intenta de nuevo. No se ha copiado ningun enlace para no exponer tus notas."
+            );
+            return;
           }
-          alert(
-            "No se pudo guardar la tirada en el servidor. Revisa tu conexion e intenta de nuevo. No se ha copiado ningun enlace para no exponer tus notas."
-          );
-          return;
         }
 
         const url = window.location.href;
@@ -3217,6 +3297,7 @@
             await restoreSessionIfAny();
           }
         } catch (_) {}
+        applyCardNotesEditingPermissions();
       })();
     </script>
   </body>
