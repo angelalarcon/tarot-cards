@@ -148,9 +148,12 @@
             <video src="./assets/do-a-reading.mp4" class="w-20 md:w-40" muted loop playsinline preload="metadata"></video>
             <div class="flex flex-col gap-3">
               <div class="text-lg font-semibold uppercase tracking-wide">Hazme una lectura</div>
-              <p class="font-normal leading-snug">
-                Saca cartas al azar.
-              </p>
+              <ol class="list-decimal list-inside text-sm font-normal leading-snug flex flex-col gap-2">
+                <li>Saca cartas al azar</li>
+                <li>Comparte la tirada con tu tarotista</li>
+                <li>Ella te hará una lectura de cada carta</li>
+                <li>Y te compartirá el enlace de vuelta</li>
+              </ol>
             </div>
           </button>
           <button
@@ -178,7 +181,7 @@
           id="randomDrawCountBlock"
           class="flex flex-col items-center p-4 text-center"
         >
-          <label for="drawCountInput" class="block w-full text-lg font-medium text-nomad-deep sm:text-xl">Cuantas cartas quieres sacar</label>
+          <label for="drawCountInput" class="block w-full text-lg font-medium text-nomad-deep md:text-2xl">Cuantas cartas quieres sacar</label>
           <div
             class="mt-2 flex w-full max-w-md shrink-0 self-center items-stretch rounded-full border-2 border-black bg-nomad-cream px-0.5 py-0.5 shadow-inner"
           >
@@ -273,7 +276,7 @@
             type="button"
             class="rounded-md border-2 border-black bg-nomad-cream px-4 py-2 text-sm font-semibold text-nomad-deep transition hover:bg-nomad-peach"
           >
-            Nueva sesion
+            Nueva tirada
           </button>
           <button
             id="shareLinkBtn"
@@ -3042,7 +3045,7 @@
       resetSessionBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         if (revealedRounds.length > 0) {
-          if (!window.confirm("¿Empezar una nueva sesion? Se perderan las cartas actuales.")) return;
+          if (!window.confirm("¿Empezar una nueva tirada? Se perderan las cartas actuales.")) return;
         }
         resetSession();
       });
