@@ -65,6 +65,28 @@
             },
           },
         },
+        safelist: [
+          "opacity-0",
+          "opacity-100",
+          "transition-none",
+          "transition-opacity",
+          "duration-300",
+          "ease-out",
+          "transition-[transform,opacity]",
+          "duration-[560ms]",
+          "ease-[cubic-bezier(0.2,0.82,0.28,1)]",
+          "transition-transform",
+          "duration-[450ms]",
+          "ease-[cubic-bezier(0.34,1.02,0.52,1)]",
+          "duration-[360ms]",
+          "transition-[left,top,width,height]",
+          "duration-[540ms]",
+          "ease-[cubic-bezier(0.22,0.91,0.36,1)]",
+          "left-[var(--card-fly-x)]",
+          "top-[var(--card-fly-y)]",
+          "w-[var(--card-fly-w)]",
+          "h-[var(--card-fly-h)]",
+        ],
         plugins: [
           function ({ addComponents }) {
             const tarotPhotoBase = {
@@ -473,7 +495,7 @@
     >
       <div
         id="cardDetailBackdrop"
-        class="absolute inset-0 bg-white/65 backdrop-blur-md"
+        class="absolute inset-0 bg-white/65 backdrop-blur-md transition-opacity duration-300 ease-out"
         aria-hidden="true"
       ></div>
       <button
@@ -502,13 +524,13 @@
           <div class="flex justify-center md:order-1 md:w-[320px] md:flex-shrink-0 md:justify-end">
             <div
               id="cardDetailImageFrame"
-              class="relative aspect-[350/598] w-full max-w-[208px] overflow-hidden rounded-md bg-nomad-paper sm:max-w-[240px] md:max-w-[320px]"
+              class="relative aspect-[350/598] w-full max-w-[208px] overflow-hidden rounded-md sm:max-w-[240px] md:max-w-[320px]"
             >
               <img
                 id="cardDetailImage"
                 src=""
                 alt=""
-                class="block h-full w-full object-contain object-center"
+                class="block h-full w-full object-contain object-center transition-opacity duration-300 ease-out"
                 decoding="async"
               />
             </div>
@@ -856,7 +878,8 @@
       const cardDetailCloseBtn = document.getElementById("cardDetailCloseBtn");
       const cardDetailImage = document.getElementById("cardDetailImage");
       const cardDetailImageFrame = document.getElementById("cardDetailImageFrame");
-      const CARD_DETAIL_IMAGE_BASE_CLASS = "block h-full w-full object-contain object-center";
+      const CARD_DETAIL_IMAGE_BASE_CLASS =
+        "block h-full w-full object-contain object-center transition-opacity duration-300 ease-out";
       const cardDetailTitleEls = document.querySelectorAll("[data-card-detail-title]");
       const cardDetailDescriptionEls = document.querySelectorAll("[data-card-detail-description]");
       const cardDetailNotes = document.getElementById("cardDetailNotes");
@@ -2200,8 +2223,10 @@
         fitCardPrintedTitleBar(titleBar);
       }
 
-      function openCardDetailModal(card, options) {
-        if (!card) return;
+      let cardDetailFlying = false;
+      let cardDetailFlySourceWrap = null;
+
+      function populateCardDetailModal(card, options) {
         applyCardNotesEditingPermissions();
         if (
           canEditCardInterpretations() &&
@@ -2232,6 +2257,9 @@
           el.textContent = descriptionText;
         });
         setCardDetailNotesContent(cardNotes.get(card.id) || "");
+      }
+
+      function showCardDetailModalShell() {
         hideActiveCardTooltip();
         clearActiveTableCardElevation();
         cardDetailLastFocusedEl =
@@ -2241,8 +2269,97 @@
         document.body.classList.add("overflow-hidden");
       }
 
+      function openCardDetailModal(card, options) {
+        if (!card || cardDetailFlying) return;
+        populateCardDetailModal(card, options);
+        resetCardDetailVisualState();
+        showCardDetailModalShell();
+      }
+
+      function removeCardFlyClone(clone) {
+        if (clone && clone.parentNode) clone.remove();
+      }
+
+      function openCardDetailModalFromTable(wrap, card, options) {
+        if (!card || !wrap || cardDetailFlying || animating) return;
+        const innerFlip = wrap.firstElementChild;
+        if (!(innerFlip instanceof HTMLElement)) {
+          openCardDetailModal(card, options);
+          return;
+        }
+
+        populateCardDetailModal(card, options);
+        cardDetailFlying = true;
+        cardDetailFlySourceWrap = wrap;
+
+        const srcRect = innerFlip.getBoundingClientRect();
+        const clone = document.createElement("div");
+        clone.setAttribute("data-card-fly-clone", "");
+        twAdd(clone, CARD_FLY_CLONE_STATIC, TW_TRANSITION_NONE);
+        setCardFlyCloneRect(clone, srcRect);
+        const cloneInner = innerFlip.cloneNode(true);
+        if (cloneInner instanceof HTMLElement) {
+          cloneInner.classList.add("h-full", "w-full", TW_TRANSITION_NONE);
+          clone.appendChild(cloneInner);
+        }
+        document.body.appendChild(clone);
+
+        hideTableCardForDetail(wrap);
+        twSetOpacity(cardDetailImage, false);
+        twSetOpacity(cardDetailBackdrop, false);
+        showCardDetailModalShell();
+
+        const finishFly = () => {
+          removeCardFlyClone(clone);
+          twSetOpacity(cardDetailImage, true);
+          twSetOpacity(cardDetailBackdrop, true);
+          cardDetailFlying = false;
+        };
+
+        const runFly = () => {
+          const target = cardDetailImageFrame.getBoundingClientRect();
+          if (target.width < 2 || target.height < 2) {
+            finishFly();
+            return;
+          }
+          const flyMs = CARD_DETAIL_FLY.ms;
+          twRemove(clone, TW_TRANSITION_NONE);
+          twAdd(clone, CARD_FLY_CLONE_MOVE);
+          requestAnimationFrame(() => {
+            setCardFlyCloneRect(clone, target);
+            twSetOpacity(cardDetailBackdrop, true);
+          });
+
+          let done = false;
+          const onEnd = (event) => {
+            if (event.propertyName !== "width" && event.propertyName !== "left") return;
+            if (done) return;
+            done = true;
+            clone.removeEventListener("transitionend", onEnd);
+            finishFly();
+          };
+          clone.addEventListener("transitionend", onEnd);
+          window.setTimeout(() => {
+            if (!done) {
+              done = true;
+              clone.removeEventListener("transitionend", onEnd);
+              finishFly();
+            }
+          }, flyMs + 120);
+        };
+
+        requestAnimationFrame(() => requestAnimationFrame(runFly));
+      }
+
       function closeCardDetailModal() {
         if (cardDetailModal.classList.contains("hidden")) return;
+        cardDetailFlying = false;
+        if (cardDetailFlySourceWrap) {
+          showTableCardAfterDetail(cardDetailFlySourceWrap);
+          cardDetailFlySourceWrap = null;
+        }
+        removeCardFlyClone(document.querySelector("[data-card-fly-clone]"));
+        resetCardDetailVisualState();
         hideCardDetailTarotistInfoTooltip();
         if (activeCardDetailCardId && canEditCardInterpretations()) {
           cardNotes.set(activeCardDetailCardId, cardDetailNotes.value);
@@ -2265,15 +2382,18 @@
 
       function attachTableCardDetailBehavior(wrap, card, options) {
         wrap.style.cursor = "pointer";
+        wrap.setAttribute("tabindex", "0");
+        wrap.setAttribute("role", "button");
+        const openDetail = () => openCardDetailModalFromTable(wrap, card, options);
         wrap.addEventListener("click", (event) => {
           event.stopPropagation();
           event.stopImmediatePropagation();
-          openCardDetailModal(card, options);
+          openDetail();
         });
         wrap.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openCardDetailModal(card, options);
+            openDetail();
           }
         });
       }
@@ -2523,19 +2643,110 @@
       /** Reparto / flip: tiempos compartidos para sensación fluida (paso 3). */
       const CARD_ANIM = {
         staggerMs: 115,
-        dealMs: 520,
+        dealMs: 560,
         dealEase: "cubic-bezier(0.2, 0.82, 0.28, 1)",
         opacityMs: 320,
         opacityEase: "cubic-bezier(0.33, 0, 0.2, 1)",
-        flipDelayMs: 320,
+        flipDelayMs: 340,
         flipMs: 450,
         flipEase: "cubic-bezier(0.34, 1.02, 0.52, 1)",
         dealTiltDeg: -5.5,
         /** Escala al “salir” del mazo (1 al aterrizar en la mesa) */
-        deckFromScale: 0.88,
+        deckFromScale: 0.9,
+        deckPopMs: 360,
+        deckPopOpacityMs: 280,
       };
 
-      /** Punto en pantalla desde el que parece salir la carta (coincide con el mazo visual). */
+      const CARD_DETAIL_FLY = {
+        ms: 540,
+        ease: "cubic-bezier(0.22, 0.91, 0.36, 1)",
+        backdropMs: 320,
+      };
+
+      const TW_OPACITY_HIDE = "opacity-0";
+      const TW_OPACITY_SHOW = "opacity-100";
+      const TW_TRANSITION_NONE = "transition-none";
+      const TABLE_CARD_DEAL_TRANSITION =
+        "transition-[transform,opacity] duration-[560ms] ease-[cubic-bezier(0.2,0.82,0.28,1)]";
+      const TABLE_CARD_FLIP_TRANSITION =
+        "transition-transform duration-[450ms] ease-[cubic-bezier(0.34,1.02,0.52,1)]";
+      const DECK_POP_TRANSITION =
+        "transition-[transform,opacity] duration-[360ms] ease-[cubic-bezier(0.2,0.82,0.28,1)]";
+      const CARD_FLY_CLONE_STATIC =
+        "fixed z-[210] pointer-events-none m-0 box-border overflow-hidden rounded-md bg-nomad-paper";
+      const CARD_FLY_CLONE_MOVE =
+        "transition-[left,top,width,height] duration-[540ms] ease-[cubic-bezier(0.22,0.91,0.36,1)]";
+
+      function twSplit(classes) {
+        const out = [];
+        const push = (value) => {
+          if (value == null) return;
+          if (Array.isArray(value)) {
+            value.forEach(push);
+            return;
+          }
+          String(value)
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .forEach((token) => out.push(token));
+        };
+        push(classes);
+        return out;
+      }
+
+      function twAdd(el, ...tokens) {
+        if (!(el instanceof Element)) return;
+        el.classList.add(...twSplit(tokens));
+      }
+
+      function twRemove(el, ...tokens) {
+        if (!(el instanceof Element)) return;
+        el.classList.remove(...twSplit(tokens));
+      }
+
+      function twSetOpacity(el, show) {
+        if (!(el instanceof HTMLElement)) return;
+        el.classList.toggle(TW_OPACITY_HIDE, !show);
+        el.classList.toggle(TW_OPACITY_SHOW, show);
+        el.style.removeProperty("opacity");
+      }
+
+      function setTableCardOpacity(wrap, show) {
+        twSetOpacity(wrap, show);
+      }
+
+      function hideTableCardForDetail(wrap) {
+        wrap.classList.remove(TW_OPACITY_SHOW);
+        wrap.classList.add(TW_OPACITY_HIDE, "pointer-events-none");
+        wrap.style.removeProperty("opacity");
+      }
+
+      function showTableCardAfterDetail(wrap) {
+        wrap.classList.remove(TW_OPACITY_HIDE, "pointer-events-none");
+        wrap.classList.add(TW_OPACITY_SHOW);
+        wrap.style.removeProperty("opacity");
+      }
+
+      function setCardFlyCloneRect(el, rect) {
+        el.style.left = `${rect.left}px`;
+        el.style.top = `${rect.top}px`;
+        el.style.width = `${rect.width}px`;
+        el.style.height = `${rect.height}px`;
+      }
+
+      function resetCardDetailVisualState() {
+        cardDetailBackdrop.classList.remove(TW_OPACITY_HIDE, TW_OPACITY_SHOW, TW_TRANSITION_NONE);
+        cardDetailImage.classList.remove(TW_OPACITY_HIDE, TW_OPACITY_SHOW);
+        cardDetailBackdrop.style.removeProperty("opacity");
+        cardDetailBackdrop.style.removeProperty("transition");
+        cardDetailImage.style.removeProperty("opacity");
+        cardDetailImage.style.removeProperty("transition");
+        twSetOpacity(cardDetailBackdrop, true);
+        twSetOpacity(cardDetailImage, true);
+      }
+
+      /** Punto en pantalla desde el que parece salir la carta (respaldo del mazo). */
       function deckDealAnchorScreen() {
         const d = deckPile.getBoundingClientRect();
         if (d.width < 4 || d.height < 4) {
@@ -2545,6 +2756,41 @@
           return { x: d.left + d.width * 0.5, y: d.top + d.height * 0.4 };
         }
         return { x: d.left + d.width * 0.62, y: d.top + d.height * 0.76 };
+      }
+
+      /** Centro del respaldo superior del mazo (origen del reparto). */
+      function deckTopCardAnchorScreen() {
+        const backs = deckPile.querySelectorAll(":scope > div");
+        if (backs.length > 0) {
+          const top = backs[backs.length - 1];
+          const r = top.getBoundingClientRect();
+          if (r.width > 2 && r.height > 2) {
+            return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.42 };
+          }
+        }
+        return deckDealAnchorScreen();
+      }
+
+      function popDeckTopCard() {
+        const backs = deckPile.querySelectorAll(":scope > div");
+        if (backs.length === 0) return;
+        const top = backs[backs.length - 1];
+        const mdUp = viewportIsMdUp();
+        const exitX = mdUp ? 28 : 48;
+        const exitY = mdUp ? -42 : -58;
+        const prior = (top.style.transform || "").trim();
+        twAdd(top, DECK_POP_TRANSITION);
+        if (mdUp) {
+          top.style.transform = `translate(${exitX}px, ${exitY}px) rotate(-10deg)`;
+        } else {
+          top.style.transform = prior
+            ? `${prior} translate(${exitX}px, ${exitY}px)`
+            : `translate(${exitX}px, ${exitY}px)`;
+        }
+        twSetOpacity(top, false);
+        window.setTimeout(() => {
+          if (top.parentNode === deckPile) top.remove();
+        }, CARD_ANIM.deckPopMs + 48);
       }
 
       function tableCardLayout() {
@@ -2584,10 +2830,12 @@
 
       const MOBILE_DECK_FAN_W = 390;
 
-      function renderDeckPile() {
+      function renderDeckPile(visibleCountOverride) {
         deckPile.innerHTML = "";
         const L = deckPileLayout();
-        const layers = Math.max(1, Math.min(7, remainingDeck.length));
+        const deckSize =
+          typeof visibleCountOverride === "number" ? visibleCountOverride : remainingDeck.length;
+        const layers = Math.max(1, Math.min(7, deckSize));
         const mdUp = viewportIsMdUp();
 
         for (let i = 0; i < layers; i += 1) {
@@ -2776,7 +3024,8 @@
           ensureTarotMeaningsLoaded(),
           instant ? mediaReady : withTimeout(mediaReady, 3500)
         ]);
-        renderDeckPile();
+        const pileVisibleAtDeal = remainingDeck.length + cards.length;
+        renderDeckPile(instant ? undefined : pileVisibleAtDeal);
 
         if (!mahjongStrip) {
           mahjongStrip = document.createElement("div");
@@ -2818,22 +3067,19 @@
           wrap.style.marginTop = rowIndex === 0 ? "0" : `${L.rowMarginTop}px`;
           wrap.style.zIndex = String(500 + stackPos);
           if (instant) {
-            wrap.style.opacity = "1";
+            setTableCardOpacity(wrap, true);
             wrap.style.transform = finalTransform;
             wrap.dataset.baseTransform = finalTransform;
           } else {
-            wrap.classList.add("will-change-[transform,_opacity]");
-            wrap.style.opacity = "0";
+            wrap.classList.add("will-change-[transform,_opacity]", TW_OPACITY_HIDE, TW_TRANSITION_NONE);
             wrap.style.transform = "";
-            wrap.style.transition = "none";
             pendingDeckDeal.push({ wrap, innerFlip: null, finalTransform, index });
           }
 
           const innerFlip = document.createElement("div");
           innerFlip.className =
-            "relative aspect-[350/598] w-full origin-center [transform-style:preserve-3d]";
+            `relative aspect-[350/598] w-full origin-center [transform-style:preserve-3d]${instant ? "" : ` ${TABLE_CARD_FLIP_TRANSITION}`}`;
           if (!instant) {
-            innerFlip.style.transition = `transform ${CARD_ANIM.flipMs}ms ${CARD_ANIM.flipEase}`;
             pendingDeckDeal[pendingDeckDeal.length - 1].innerFlip = innerFlip;
           }
           if (instant) {
@@ -2873,22 +3119,24 @@
           await new Promise((resolve) => {
             requestAnimationFrame(() => requestAnimationFrame(resolve));
           });
-          const anchor = deckDealAnchorScreen();
           for (const item of pendingDeckDeal) {
             const { wrap, innerFlip, finalTransform, index } = item;
+            const anchor = deckTopCardAnchorScreen();
             const r = wrap.getBoundingClientRect();
             const cx = r.left + r.width / 2;
-            const cy = r.bottom - 2;
+            const cy = r.top + r.height / 2;
             const dx = anchor.x - cx;
             const dy = anchor.y - cy;
             const tilt = CARD_ANIM.dealTiltDeg + (Math.random() * 2.2 - 1.1);
             wrap.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${CARD_ANIM.deckFromScale}) rotate(${tilt.toFixed(2)}deg)`;
             void wrap.offsetHeight;
-            wrap.style.transition = `transform ${CARD_ANIM.dealMs}ms ${CARD_ANIM.dealEase}, opacity ${CARD_ANIM.opacityMs}ms ${CARD_ANIM.opacityEase}`;
+            twRemove(wrap, TW_TRANSITION_NONE);
+            twAdd(wrap, TABLE_CARD_DEAL_TRANSITION);
 
             const dealDelay = CARD_ANIM.staggerMs * index;
             window.setTimeout(() => {
-              wrap.style.opacity = "1";
+              popDeckTopCard();
+              setTableCardOpacity(wrap, true);
               wrap.style.transform = finalTransform;
               wrap.dataset.baseTransform = finalTransform;
             }, dealDelay);
@@ -2898,14 +3146,15 @@
             const cleanupMs =
               dealDelay + Math.max(CARD_ANIM.dealMs, CARD_ANIM.flipDelayMs + CARD_ANIM.flipMs) + 80;
             window.setTimeout(() => {
-              wrap.classList.remove("will-change-[transform,_opacity]");
+              twRemove(wrap, "will-change-[transform,_opacity]", TABLE_CARD_DEAL_TRANSITION);
               wrap.classList.add("will-change-auto");
-              wrap.style.transition = "";
             }, cleanupMs);
           }
         }
 
         if (instant) return;
+
+        renderDeckPile();
 
         const lastStart = Math.max(0, (cards.length - 1) * CARD_ANIM.staggerMs);
         const totalMs =
