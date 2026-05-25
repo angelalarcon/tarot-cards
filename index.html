@@ -397,7 +397,7 @@
           ></div>
           <div
             id="deckPile"
-            class="fixed -bottom-16 md:bottom-4 -right-16 top-auto z-[120] h-[229px] w-[312px] translate-y-0 cursor-pointer md:bottom-auto md:right-auto md:left-8 md:top-1/2 md:h-[252px] md:w-[152px] md:-translate-y-1/2"
+            class="fixed -bottom-16 md:bottom-4 -right-16 top-auto z-[120] h-[229px] w-[312px] translate-y-0 cursor-pointer md:bottom-auto md:right-auto md:left-8 md:top-1/2 md:h-[252px] md:w-[152px] md:-translate-y-1/2 md:[filter:drop-shadow(0_14px_22px_rgba(8,12,28,0.42))_drop-shadow(0_4px_8px_rgba(8,12,28,0.22))]"
           ></div>
         </div>
       </section>
@@ -913,6 +913,174 @@
           : null;
 
       let currentShareCode = null;
+
+      // =========================================================================
+      // Session telemetry — Option B (minimised, legitimate interest)
+      //
+      //   * No IP, no precise geo, no fingerprinting (screen / hardware / fonts).
+      //   * session_id lives only in memory (no localStorage / sessionStorage /
+      //     cookies), so it cannot be used to track across visits.
+      //   * The IP API is queried only to derive the ISO country code; the IP
+      //     itself is never persisted.
+      //   * Schema: db/migrations/0001_sessions.sql
+      // =========================================================================
+      const SESSION_TELEMETRY_TABLE = "sessions";
+
+      function generateSessionId() {
+        try {
+          if (window.crypto && typeof window.crypto.randomUUID === "function") {
+            return window.crypto.randomUUID();
+          }
+        } catch (_) {}
+        return (
+          "s-" +
+          Date.now().toString(36) +
+          "-" +
+          Math.random().toString(36).slice(2, 10) +
+          Math.random().toString(36).slice(2, 10)
+        );
+      }
+
+      const sessionTelemetryId = generateSessionId();
+
+      function detectCoarseClientInfo() {
+        const nav = (typeof navigator !== "undefined" && navigator) || {};
+        const ua = nav.userAgent || "";
+        const out = {
+          browser_name: null,
+          os_name: null,
+          device_type: "desktop",
+        };
+        if (!ua) return out;
+        const u = ua.toLowerCase();
+
+        if (/ipad/.test(u) || (/(macintosh|mac os x)/.test(u) && nav.maxTouchPoints > 1)) {
+          out.device_type = "tablet";
+        } else if (/iphone|ipod/.test(u)) {
+          out.device_type = "mobile";
+        } else if (/android/.test(u)) {
+          out.device_type = /mobile/.test(u) ? "mobile" : "tablet";
+        } else if (/mobi|phone/.test(u)) {
+          out.device_type = "mobile";
+        }
+
+        if (/edg\//i.test(ua)) out.browser_name = "Edge";
+        else if (/opr\//i.test(ua) || /opera/i.test(ua)) out.browser_name = "Opera";
+        else if (/chrome/i.test(ua) && !/chromium/i.test(ua)) out.browser_name = "Chrome";
+        else if (/firefox/i.test(ua)) out.browser_name = "Firefox";
+        else if (/safari/i.test(ua)) out.browser_name = "Safari";
+
+        if (/windows nt/i.test(ua)) out.os_name = "Windows";
+        else if (/mac os x/i.test(ua)) out.os_name = "macOS";
+        else if (/android/i.test(ua)) out.os_name = "Android";
+        else if (/iphone|ipad|ipod/i.test(ua)) out.os_name = "iOS";
+        else if (/linux/i.test(ua)) out.os_name = "Linux";
+
+        return out;
+      }
+
+      function readUtmParams() {
+        const out = {};
+        try {
+          const params = new URL(window.location.href).searchParams;
+          for (const [key, value] of params.entries()) {
+            if (/^utm_/i.test(key) && value) out[key.toLowerCase()] = value;
+          }
+        } catch (_) {}
+        return Object.keys(out).length > 0 ? out : null;
+      }
+
+      function readReferrerHost() {
+        try {
+          const ref = document.referrer || "";
+          if (!ref) return null;
+          const host = new URL(ref).hostname || null;
+          if (!host) return null;
+          if (host === window.location.hostname) return null;
+          return host;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      async function fetchCountryFromIp() {
+        const endpoints = [
+          "https://ipwho.is/",
+          "https://ipapi.co/json/",
+        ];
+        for (const url of endpoints) {
+          try {
+            const resp = await fetch(url, { mode: "cors", cache: "no-store" });
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            if (!data) continue;
+            const country_code = data.country_code || null;
+            const country = data.country || data.country_name || null;
+            if (country_code || country) return { country_code, country };
+          } catch (_) {}
+        }
+        return { country_code: null, country: null };
+      }
+
+      function buildSessionTelemetryPayload({ geo, sessionId }) {
+        const nav = (typeof navigator !== "undefined" && navigator) || {};
+        const client = detectCoarseClientInfo();
+
+        let tzName = null;
+        try {
+          tzName = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+        } catch (_) {}
+
+        return {
+          session_id: sessionId,
+          share_code: currentShareCode || null,
+
+          country_code: (geo && geo.country_code) || null,
+          country: (geo && geo.country) || null,
+
+          device_type: client.device_type,
+          browser_name: client.browser_name,
+          os_name: client.os_name,
+
+          language: nav.language || null,
+          timezone: tzName,
+
+          referrer_host: readReferrerHost(),
+          utm: readUtmParams(),
+        };
+      }
+
+      let sessionTelemetryLogged = false;
+      let sessionTelemetryInFlight = null;
+
+      async function logSessionTelemetry() {
+        if (!supabaseClient) return;
+        if (sessionTelemetryLogged) return;
+        if (sessionTelemetryInFlight) return sessionTelemetryInFlight;
+
+        sessionTelemetryInFlight = (async () => {
+          try {
+            const geo = await fetchCountryFromIp().catch(() => null);
+            const payload = buildSessionTelemetryPayload({
+              geo,
+              sessionId: sessionTelemetryId,
+            });
+            const { error } = await supabaseClient
+              .from(SESSION_TELEMETRY_TABLE)
+              .insert(payload);
+            if (error) {
+              console.warn("Session telemetry insert failed", error);
+              return;
+            }
+            sessionTelemetryLogged = true;
+          } catch (err) {
+            console.warn("Session telemetry exception", err);
+          } finally {
+            sessionTelemetryInFlight = null;
+          }
+        })();
+        return sessionTelemetryInFlight;
+      }
 
       function generateShareCode() {
         let out = "";
@@ -2781,7 +2949,8 @@
         const prior = (top.style.transform || "").trim();
         twAdd(top, DECK_POP_TRANSITION);
         if (mdUp) {
-          top.style.transform = `translate(${exitX}px, ${exitY}px) rotate(-10deg)`;
+          top.style.transform = `translate3d(${exitX}px, ${exitY}px, 0) rotate(-10deg)`;
+          top.style.transformOrigin = "center center";
         } else {
           top.style.transform = prior
             ? `${prior} translate(${exitX}px, ${exitY}px)`
@@ -2823,9 +2992,38 @@
 
       function deckPileLayout() {
         if (viewportIsMdUp()) {
-          return { tileW: 140, deckLayerStep: 2 };
+          return { tileW: 140, maxLayers: 5, stepX: 3.1, stepY: 0.65 };
         }
         return { tileW: 114, deckLayerStep: 1 };
+      }
+
+      /** Valor pseudoaleatorio estable (0–1) por índice de capa. */
+      function deckLayerHash01(seed) {
+        const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
+        return x - Math.floor(x);
+      }
+
+      function deckDesktopLayerPose(layerIndex, layerCount) {
+        const depth = layerCount <= 1 ? 1 : layerIndex / (layerCount - 1);
+        const jx = (deckLayerHash01(layerIndex * 1.7 + 0.3) - 0.5) * 2.2;
+        const jy = (deckLayerHash01(layerIndex * 2.9 + 1.1) - 0.5) * 1.6;
+        const jr = (deckLayerHash01(layerIndex * 4.1 + 2.7) - 0.5) * 2.4;
+        const L = deckPileLayout();
+        const x = layerIndex * L.stepX + jx;
+        const y = layerIndex * -L.stepY + jy;
+        const rot = jr + depth * 0.35 - 0.2;
+        return { x: +x.toFixed(2), y: +y.toFixed(2), rot: +rot.toFixed(2) };
+      }
+
+      function deckDesktopLayerShadow(layerIndex, layerCount) {
+        const depth = layerCount <= 1 ? 0 : layerIndex / (layerCount - 1);
+        if (depth < 0.45) {
+          return "0 1px 1px rgba(8,12,28,0.12)";
+        }
+        if (depth < 0.82) {
+          return "0 2px 4px rgba(8,12,28,0.18), 0 1px 2px rgba(8,12,28,0.1)";
+        }
+        return "0 6px 14px rgba(8,12,28,0.28), 0 2px 5px rgba(8,12,28,0.16), 0 0 0 1px rgba(255,255,255,0.04)";
       }
 
       const MOBILE_DECK_FAN_W = 390;
@@ -2835,25 +3033,27 @@
         const L = deckPileLayout();
         const deckSize =
           typeof visibleCountOverride === "number" ? visibleCountOverride : remainingDeck.length;
-        const layers = Math.max(1, Math.min(7, deckSize));
         const mdUp = viewportIsMdUp();
+        const maxLayers = mdUp ? L.maxLayers : 7;
+        const layers = Math.max(1, Math.min(maxLayers, deckSize));
 
         for (let i = 0; i < layers; i += 1) {
           const back = document.createElement("div");
-          back.className =
-            `absolute box-border aspect-[350/598] ${TAROT_CARD_BACK_SURFACE_CLASS} shadow-sm rounded`;
+          back.className = `absolute box-border aspect-[350/598] ${TAROT_CARD_BACK_SURFACE_CLASS} rounded`;
           back.style.width = `${L.tileW}px`;
 
           if (mdUp) {
-            const s = L.deckLayerStep;
-            back.style.left = `${i * s}px`;
-            back.style.top = `${i * -s}px`;
+            const pose = deckDesktopLayerPose(i, layers);
+            back.style.left = "0";
+            back.style.top = "0";
             back.style.bottom = "";
             back.style.marginLeft = "";
-            back.style.transform = "";
-            back.style.transformOrigin = "";
-            back.style.zIndex = "";
+            back.style.transformOrigin = "center center";
+            back.style.transform = `translate3d(${pose.x}px, ${pose.y}px, 0) rotate(${pose.rot}deg)`;
+            back.style.zIndex = String(10 + i);
+            back.style.boxShadow = deckDesktopLayerShadow(i, layers);
           } else {
+            back.classList.add("shadow-sm");
             back.style.top = "";
             const pivotX = (deckPile.offsetWidth || MOBILE_DECK_FAN_W) * 0.62;
             back.style.left = `${pivotX}px`;
@@ -3837,6 +4037,8 @@
         updateRemainingText();
         setStep(1, { instant: true });
         renderDeckPile();
+
+        void logSessionTelemetry();
 
         try {
           await preloadCardMedia(fullDeck, { waitForAnimated: true });
