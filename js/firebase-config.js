@@ -10,6 +10,10 @@ window.FIREBASE_CONFIG = {
   appId: "1:489872288851:web:953269023e8e16380d6aa6",
 };
 
-// The only two Google accounts allowed into admin.html.
+// The only Google accounts allowed into admin.html.
 // Real enforcement is in firestore.rules — this list is for immediate UI feedback only.
-window.ADMIN_ALLOWED_EMAILS = ["angelalarcon.aa@gmail.com", "anaislegonia@gmail.com"];
+window.ADMIN_ALLOWED_EMAILS = [
+  "angelalarcon.aa@gmail.com",
+  "anaislegonia@gmail.com",
+  "arcanavivatarot@gmail.com",
+];
