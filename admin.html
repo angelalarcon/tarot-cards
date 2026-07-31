@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es" class="[color-scheme:light]">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tarot - Panel de administración</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M27%2017.05A12%2012%200%201%201%2014.95%204%209.33%209.33%200%200%200%2027%2017.05z%22%20fill%3D%22%236B7B91%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./js/tailwind-theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.19.0/js/md5.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="./js/firebase-config.js"></script>
+  </head>
+  <body class="min-h-screen bg-nomad-paper font-sans text-nomad-ink antialiased">
+    <!-- Login screen -->
+    <div id="loginScreen" class="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
+      <h1 class="font-ananda text-3xl text-nomad-ink">Panel de administración</h1>
+      <p class="max-w-sm text-center text-sm text-nomad-ink/70">
+        Acceso restringido. Inicia sesión con una cuenta de Google autorizada.
+      </p>
+      <button
+        id="signInBtn"
+        type="button"
+        class="rounded border border-nomad-sea/40 bg-nomad-cream px-5 py-3 font-medium shadow-[0_2px_0_0_rgba(51,51,68,0.12)] transition hover:border-nomad-sea/60 hover:bg-nomad-peach/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
+      >
+        Iniciar sesión con Google
+      </button>
+      <p id="loginError" class="hidden max-w-sm text-center text-sm text-red-600"></p>
+    </div>
+
+    <!-- Admin screen -->
+    <div id="adminScreen" class="mx-auto hidden max-w-6xl px-4 py-8">
+      <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="font-ananda text-2xl text-nomad-ink">Clientes</h1>
+          <p id="currentUserEmail" class="text-xs text-nomad-ink/60"></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            id="newClientBtn"
+            type="button"
+            class="rounded border border-nomad-sea/40 bg-nomad-sage/80 px-4 py-2 text-sm font-medium text-white shadow-[0_2px_0_0_rgba(51,51,68,0.12)] transition hover:bg-nomad-sage"
+          >
+            + Nuevo cliente
+          </button>
+          <button
+            id="signOutBtn"
+            type="button"
+            class="rounded border border-nomad-sea/30 bg-nomad-cream px-4 py-2 text-sm font-medium transition hover:bg-nomad-peach/50"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </header>
+
+      <div class="relative mb-5">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-nomad-ink/40"></i>
+        <input
+          id="clientSearchInput"
+          type="search"
+          placeholder="Buscar por nombre, teléfono, email, ciudad, ocupación..."
+          class="w-full rounded border border-nomad-sea/30 bg-white/80 py-2 pl-9 pr-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomad-deep"
+        />
+      </div>
+
+      <p id="clientsEmpty" class="hidden text-sm text-nomad-ink/60">Todavía no hay clientes registrados.</p>
+      <p id="clientsNoMatches" class="hidden text-sm text-nomad-ink/60">Ninguna coincidencia para esa búsqueda.</p>
+
+      <div id="clientsGrid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+    </div>
+
+    <!-- Client form modal -->
+    <div id="clientModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+      <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded border border-nomad-sea/30 bg-nomad-paper p-6 shadow-lg">
+        <h2 id="clientModalTitle" class="mb-4 font-ananda text-xl">Nuevo cliente</h2>
+        <form id="clientForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label class="flex flex-col gap-1 text-sm sm:col-span-2">
+            Nombre *
+            <input name="name" type="text" required class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Teléfono
+            <input name="phone" type="tel" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Email
+            <input name="email" type="email" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Fecha de nacimiento
+            <input name="birthDate" type="date" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Hora de nacimiento
+            <input name="birthHour" type="time" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Lugar de nacimiento
+            <input name="birthPlace" type="text" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Ciudad donde vive actualmente
+            <input name="currentCity" type="text" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Ocupación
+            <input name="occupation" type="text" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Género
+            <input name="gender" type="text" list="genderOptions" class="rounded border border-nomad-sea/30 px-3 py-2" />
+            <datalist id="genderOptions">
+              <option value="Femenino"></option>
+              <option value="Masculino"></option>
+              <option value="No binario"></option>
+              <option value="Prefiero no decirlo"></option>
+            </datalist>
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Referencia (¿cómo nos conoció?)
+            <input name="reference" type="text" list="referenceOptions" class="rounded border border-nomad-sea/30 px-3 py-2" />
+            <datalist id="referenceOptions">
+              <option value="Instagram"></option>
+              <option value="Facebook"></option>
+              <option value="TikTok"></option>
+              <option value="Google"></option>
+              <option value="Recomendación de un/a amigo/a"></option>
+              <option value="Otro"></option>
+            </datalist>
+          </label>
+          <label class="flex flex-col gap-1 text-sm">
+            Última consulta
+            <input name="lastConsultation" type="date" class="rounded border border-nomad-sea/30 px-3 py-2" />
+          </label>
+          <label class="flex flex-col gap-1 text-sm sm:col-span-2">
+            Observaciones
+            <textarea name="observations" rows="3" class="rounded border border-nomad-sea/30 px-3 py-2"></textarea>
+          </label>
+
+          <div class="mt-2 flex justify-end gap-2 sm:col-span-2">
+            <button
+              id="clientCancelBtn"
+              type="button"
+              class="rounded border border-nomad-sea/30 bg-nomad-cream px-4 py-2 text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="rounded border border-nomad-sea/40 bg-nomad-sage/80 px-4 py-2 text-sm font-medium text-white"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const ALLOWED_EMAILS = window.ADMIN_ALLOWED_EMAILS || [];
+      const firebaseApp = window.firebase.initializeApp(window.FIREBASE_CONFIG);
+      const auth = firebaseApp.auth();
+      const db = firebaseApp.firestore();
+
+      const loginScreen = document.getElementById("loginScreen");
+      const adminScreen = document.getElementById("adminScreen");
+      const loginError = document.getElementById("loginError");
+      const signInBtn = document.getElementById("signInBtn");
+      const signOutBtn = document.getElementById("signOutBtn");
+      const currentUserEmail = document.getElementById("currentUserEmail");
+      const newClientBtn = document.getElementById("newClientBtn");
+      const clientsGrid = document.getElementById("clientsGrid");
+      const clientsEmpty = document.getElementById("clientsEmpty");
+      const clientsNoMatches = document.getElementById("clientsNoMatches");
+      const clientSearchInput = document.getElementById("clientSearchInput");
+      const clientModal = document.getElementById("clientModal");
+      const clientModalTitle = document.getElementById("clientModalTitle");
+      const clientForm = document.getElementById("clientForm");
+      const clientCancelBtn = document.getElementById("clientCancelBtn");
+
+      let editingClientId = null;
+      let unsubscribeClients = null;
+      let allClients = [];
+      let clientsFuse = null;
+
+      const FUSE_KEYS = [
+        "name",
+        "phone",
+        "email",
+        "currentCity",
+        "occupation",
+        "gender",
+        "reference",
+        "birthPlace",
+        "observations",
+      ];
+
+      function showLoginError(message) {
+        loginError.textContent = message;
+        loginError.classList.remove("hidden");
+      }
+
+      function clearLoginError() {
+        loginError.textContent = "";
+        loginError.classList.add("hidden");
+      }
+
+      signInBtn.addEventListener("click", async () => {
+        clearLoginError();
+        const provider = new window.firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        try {
+          await auth.signInWithPopup(provider);
+        } catch (err) {
+          console.warn("Sign-in failed", err);
+          showLoginError("No se pudo iniciar sesión. Inténtalo de nuevo.");
+        }
+      });
+
+      signOutBtn.addEventListener("click", () => auth.signOut());
+
+      auth.onAuthStateChanged((user) => {
+        if (unsubscribeClients) {
+          unsubscribeClients();
+          unsubscribeClients = null;
+        }
+
+        if (!user) {
+          adminScreen.classList.add("hidden");
+          loginScreen.classList.remove("hidden");
+          return;
+        }
+
+        if (!ALLOWED_EMAILS.includes(user.email)) {
+          showLoginError("Esta cuenta no tiene acceso al panel de administración.");
+          auth.signOut();
+          return;
+        }
+
+        clearLoginError();
+        loginScreen.classList.add("hidden");
+        adminScreen.classList.remove("hidden");
+        currentUserEmail.textContent = user.email;
+        subscribeToClients();
+      });
+
+      function computeAge(birthDateValue) {
+        if (!birthDateValue) return "";
+        const birth = new Date(`${birthDateValue}T00:00:00`);
+        if (Number.isNaN(birth.getTime())) return "";
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age -= 1;
+        }
+        return age >= 0 ? age : "";
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[ch]);
+      }
+
+      function subscribeToClients() {
+        unsubscribeClients = db
+          .collection("clients")
+          .orderBy("name")
+          .onSnapshot(
+            (snapshot) => {
+              allClients = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+              clientsFuse = new Fuse(allClients, { keys: FUSE_KEYS, threshold: 0.35, ignoreLocation: true });
+              applySearch();
+            },
+            (err) => {
+              console.warn("Clients subscription failed", err);
+            }
+          );
+      }
+
+      function applySearch() {
+        const query = clientSearchInput.value.trim();
+        if (!query) {
+          renderClients(allClients);
+          return;
+        }
+        const results = clientsFuse ? clientsFuse.search(query).map((r) => r.item) : [];
+        renderClients(results, { searching: true });
+      }
+
+      clientSearchInput.addEventListener("input", applySearch);
+
+      function gravatarUrl(email) {
+        if (!email) return null;
+        const hash = window.md5(email.trim().toLowerCase());
+        return `https://www.gravatar.com/avatar/${hash}?s=96&d=404`;
+      }
+
+      function avatarMarkup(client) {
+        const url = gravatarUrl(client.email);
+        const fallback = `
+          <div class="flex h-14 w-14 items-center justify-center rounded-full bg-nomad-sea/15 text-nomad-sea">
+            <i class="fa-solid fa-user text-lg"></i>
+          </div>`;
+        if (!url) return fallback;
+        return `
+          <div class="relative h-14 w-14 shrink-0">
+            <img
+              src="${escapeHtml(url)}"
+              alt=""
+              class="h-14 w-14 rounded-full object-cover"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div style="display:none" class="h-14 w-14 items-center justify-center rounded-full bg-nomad-sea/15 text-nomad-sea">
+              <i class="fa-solid fa-user text-lg"></i>
+            </div>
+          </div>`;
+      }
+
+      function renderClients(clients, { searching = false } = {}) {
+        clientsGrid.innerHTML = "";
+        clientsEmpty.classList.toggle("hidden", allClients.length > 0);
+        clientsNoMatches.classList.toggle("hidden", !(searching && clients.length === 0));
+
+        for (const client of clients) {
+          const card = document.createElement("div");
+          card.className = "flex flex-col gap-3 rounded border border-nomad-sea/20 bg-white/70 p-4 shadow-[0_2px_0_0_rgba(51,51,68,0.06)]";
+          card.innerHTML = `
+            <div class="flex items-start gap-3">
+              ${avatarMarkup(client)}
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium">${escapeHtml(client.name)}</p>
+                <p class="text-xs text-nomad-ink/60">${escapeHtml(computeAge(client.birthDate))} años · ${escapeHtml(client.currentCity)}</p>
+              </div>
+            </div>
+            <div class="space-y-1 text-sm">
+              <p><i class="fa-solid fa-phone mr-1 w-4 text-nomad-ink/40"></i>${escapeHtml(client.phone)}</p>
+              <p class="truncate"><i class="fa-solid fa-envelope mr-1 w-4 text-nomad-ink/40"></i>${escapeHtml(client.email)}</p>
+              <p><i class="fa-solid fa-calendar-check mr-1 w-4 text-nomad-ink/40"></i>Última consulta: ${escapeHtml(client.lastConsultation)}</p>
+            </div>
+            <button type="button" data-action="toggle" class="self-start text-xs text-nomad-sea underline">Ver más ▸</button>
+            <div data-role="details" class="hidden space-y-1 border-t border-nomad-sea/10 pt-2 text-xs text-nomad-ink/80">
+              <div><span class="font-medium">Fecha de nacimiento:</span> ${escapeHtml(client.birthDate)}</div>
+              <div><span class="font-medium">Hora de nacimiento:</span> ${escapeHtml(client.birthHour)}</div>
+              <div><span class="font-medium">Lugar de nacimiento:</span> ${escapeHtml(client.birthPlace)}</div>
+              <div><span class="font-medium">Ocupación:</span> ${escapeHtml(client.occupation)}</div>
+              <div><span class="font-medium">Género:</span> ${escapeHtml(client.gender)}</div>
+              <div><span class="font-medium">Referencia:</span> ${escapeHtml(client.reference)}</div>
+              <div><span class="font-medium">Observaciones:</span> ${escapeHtml(client.observations)}</div>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-nomad-sea/10 pt-2 text-sm">
+              <button type="button" data-action="edit" class="text-nomad-sea underline">Editar</button>
+              <button type="button" data-action="delete" class="text-red-600 underline">Eliminar</button>
+            </div>
+          `;
+
+          const details = card.querySelector('[data-role="details"]');
+          const toggleBtn = card.querySelector('[data-action="toggle"]');
+          toggleBtn.addEventListener("click", () => {
+            const isHidden = details.classList.toggle("hidden");
+            toggleBtn.textContent = isHidden ? "Ver más ▸" : "Ver menos ▾";
+          });
+          card.querySelector('[data-action="edit"]').addEventListener("click", () => openClientForm(client));
+          card.querySelector('[data-action="delete"]').addEventListener("click", () => deleteClient(client));
+
+          clientsGrid.appendChild(card);
+        }
+      }
+
+      function openClientForm(client) {
+        editingClientId = client ? client.id : null;
+        clientModalTitle.textContent = client ? "Editar cliente" : "Nuevo cliente";
+        clientForm.reset();
+        if (client) {
+          for (const field of clientForm.elements) {
+            if (field.name && client[field.name] != null) {
+              field.value = client[field.name];
+            }
+          }
+        }
+        clientModal.classList.remove("hidden");
+        clientModal.classList.add("flex");
+      }
+
+      function closeClientForm() {
+        clientModal.classList.add("hidden");
+        clientModal.classList.remove("flex");
+        editingClientId = null;
+      }
+
+      newClientBtn.addEventListener("click", () => openClientForm(null));
+      clientCancelBtn.addEventListener("click", closeClientForm);
+
+      clientForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(clientForm);
+        const payload = {};
+        for (const [key, value] of formData.entries()) {
+          payload[key] = value.trim();
+        }
+        payload.updatedAt = window.firebase.firestore.FieldValue.serverTimestamp();
+
+        try {
+          if (editingClientId) {
+            await db.collection("clients").doc(editingClientId).update(payload);
+          } else {
+            payload.createdAt = window.firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection("clients").add(payload);
+          }
+          closeClientForm();
+        } catch (err) {
+          console.warn("Save client failed", err);
+          window.alert("No se pudo guardar el cliente. Inténtalo de nuevo.");
+        }
+      });
+
+      async function deleteClient(client) {
+        const confirmed = window.confirm(`¿Eliminar a ${client.name}? Esta acción no se puede deshacer.`);
+        if (!confirmed) return;
+        try {
+          await db.collection("clients").doc(client.id).delete();
+        } catch (err) {
+          console.warn("Delete client failed", err);
+          window.alert("No se pudo eliminar el cliente. Inténtalo de nuevo.");
+        }
+      }
+    </script>
+  </body>
+</html>
